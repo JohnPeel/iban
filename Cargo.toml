@@ -7,4 +7,17 @@ documentation = "https://docs.rs/iban"
 version = "0.0.1"
 edition = "2021"
 
+[features]
+default = ["std"]
+std = []
+
 [dependencies]
+arrayvec = { version = "0.7.2", default-features = false }
+phf = { version = "0.11.1", default-features = false }
+
+[build-dependencies]
+csv = "1.2.1"
+phf_codegen = "0.11.1"
+quote = "1.0.26"
+regex = "1.7.3"
+serde = { version = "1.0.159", features = ["derive"] }
