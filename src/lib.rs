@@ -5,7 +5,7 @@ use core::{fmt, ops::Deref, str::FromStr};
 use arrayvec::ArrayString;
 
 mod util;
-use util::IteratorExt as _;
+use util::digits;
 
 include!(concat!(env!("OUT_DIR"), "/countries.rs"));
 
@@ -85,21 +85,6 @@ impl AsRef<str> for Iban {
     }
 }
 
-fn digits(mut value: u8) -> impl Iterator<Item = u8> {
-    let hundreds = value / 100;
-    value -= hundreds * 100;
-    let tens = value / 10;
-    value -= tens * 10;
-    let ones = value;
-
-    [hundreds, tens, ones]
-        .into_iter()
-        // Skip leading zeros
-        .skip_while(|&b| b == 0)
-        // Ensure at least one value (0) is provided by this iterator.
-        .ensure_one(0)
-}
-
 impl FromStr for Iban {
     type Err = ParseError;
 
@@ -109,7 +94,7 @@ impl FromStr for Iban {
             .as_bytes()
             .iter()
             .copied()
-            .filter(u8::is_ascii_alphanumeric);
+            .filter(|byte| !byte.is_ascii_whitespace());
 
         for _ in 0..2 {
             let ch = characters

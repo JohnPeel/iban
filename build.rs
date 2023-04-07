@@ -44,43 +44,55 @@ fn main() {
         .from_path("./registry.txt")
         .expect("failed to create csv reader for registry.txt");
 
+    // TODO: `\d+(a|n|c|i)` is also valid, and specifies a maximum length, rather than a fixed length.
     let pattern = Regex::new(r"(\d+)!(a|n|c|i)").expect("regex should be valid");
 
-    let mut map = phf_codegen::Map::new();
-    for record in reader.deserialize() {
-        let Record {
-            country_code,
-            iban_format_swift,
-            iban_length,
-        } = record.expect("valid record");
-        let captures = pattern
-            .captures_iter(&iban_format_swift[2..])
-            .map(|captures| {
-                (
-                    captures[1].parse::<usize>().unwrap(),
-                    captures[2].parse::<char>().unwrap(),
-                )
-            })
-            .map(|(len, char)| quote! { (#len, #char) });
-        let captures = iban_format_swift[..2]
-            .as_bytes()
-            .iter()
-            .map(|byte| (1usize, char::from(*byte)))
-            .map(|(len, char)| quote! { (#len, #char) })
-            .chain(captures);
+    let countries = reader
+        .deserialize()
+        .map(|record| record.expect("valid record"))
+        .map(
+            |Record {
+                 country_code,
+                 iban_format_swift,
+                 iban_length,
+             }| {
+                let captures = pattern
+                    .captures_iter(&iban_format_swift[2..])
+                    .map(|captures| {
+                        (
+                            captures[1].parse::<usize>().unwrap(),
+                            captures[2].parse::<char>().unwrap(),
+                        )
+                    })
+                    .map(|(len, char)| quote! { (#len, #char) });
+                let captures = iban_format_swift[..2]
+                    .as_bytes()
+                    .iter()
+                    .map(|byte| (1usize, char::from(*byte)))
+                    .map(|(len, char)| quote! { (#len, #char) })
+                    .chain(captures);
 
-        let value = quote! {
-            (#iban_length, &[#(#captures),*])
-        };
-        map.entry(country_code, value.to_string().as_str());
+                (
+                    country_code,
+                    quote! {
+                        (#iban_length, &[#(#captures),*])
+                    },
+                )
+            },
+        )
+        .collect::<Vec<_>>();
+
+    let mut map = phf_codegen::Map::new();
+    for (key, value) in countries.iter() {
+        map.entry(key.as_str(), value.to_string().as_str());
     }
+    let countries = map.build();
 
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     std::fs::write(
         out_path.join("countries.rs"),
         format!(
-            "#[allow(clippy::type_complexity, clippy::unreadable_literal)]\nstatic COUNTRIES: ::phf::Map<&'static str, (usize, &'static [(usize, char)])> = {};\n",
-            map.build()
+            "#[allow(clippy::type_complexity, clippy::unreadable_literal)]\nstatic COUNTRIES: ::phf::Map<&'static str, (usize, &'static [(usize, char)])> = {countries};\n",
         ),
     )
     .expect("failed to write countries file");
