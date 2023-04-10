@@ -12,12 +12,12 @@ default = ["std"]
 std = []
 
 [dependencies]
-arrayvec = { version = "0.7.2", default-features = false }
-phf = { version = "0.11.1", default-features = false }
+arrayvec = { version = "0.7", default-features = false }
+phf = { version = "0.11", default-features = false }
 
 [build-dependencies]
-csv = "1.2.1"
-phf_codegen = "0.11.1"
-quote = "1.0.26"
-regex = "1.7.3"
-serde = { version = "1.0.159", features = ["derive"] }
+csv = "1"
+phf_codegen = "0.11"
+quote = "1"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
