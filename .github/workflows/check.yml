@@ -42,6 +42,7 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy
+      # TODO: Find alternative for actions-rs/clippy-check
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

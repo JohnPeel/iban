@@ -40,7 +40,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@nightly
       - run: rustup default stable
-      - run: cargo +nightly update -Zminimal-versions
+      - run: cargo +nightly update -Zdirect-minimal-versions
       - run: cargo test --locked --all-features --all-targets
   os-check:
     runs-on: ${{ matrix.os }}

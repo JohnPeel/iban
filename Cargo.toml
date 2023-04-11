@@ -21,7 +21,7 @@ csv = "1"
 phf_codegen = "0.11"
 quote = "1"
 regex = "1"
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1.0.7", features = ["derive"] }
 
 [dev-dependencies]
 test-case = "3"
