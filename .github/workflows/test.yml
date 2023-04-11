@@ -84,10 +84,13 @@ jobs:
           RUSTFLAGS: "-C instrument-coverage -C codegen-units=1"
           RUSTDOCFLAGS: "-C instrument-coverage -C codegen-units=1 -Z unstable-options --persist-doctests target/debug/doctests"
           LLVM_PROFILE_FILE: "target/coverage/raw/cargo-test-%p-%m.profraw"
-      - run: grcov target/coverage/raw --source-dir . --binary-path target/debug --keep-only 'src/**/*.rs' --branch --ignore-not-existing -t html -o target/coverage/html
-      - run: grcov target/coverage/raw --source-dir . --binary-path target/debug --keep-only 'src/**/*.rs' --branch --ignore-not-existing -t covdir -o target/coverage/coverage.json
-      - run: grcov target/coverage/raw --source-dir . --binary-path target/debug --keep-only 'src/**/*.rs' --branch --ignore-not-existing -t lcov -o target/coverage/lcov.info
+      - run: grcov target/coverage/raw --source-dir . --binary-path target/debug --keep-only 'src/**/*.rs' --branch --ignore-not-existing -t markdown -o target/coverage/coverage.md
       - uses: actions/upload-artifact@v3
         with:
           name: code-coverage
-          path: target/coverage
+          path: target/coverage/coverage.md
+      - run: grcov target/coverage/raw --source-dir . --binary-path target/debug --keep-only 'src/**/*.rs' --branch --ignore-not-existing -t lcov -o target/coverage/lcov.info
+      - uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: target/coverage/lcov.info
