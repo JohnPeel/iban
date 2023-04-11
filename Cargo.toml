@@ -6,6 +6,7 @@ repository = "https://github.com/JohnPeel/iban"
 documentation = "https://docs.rs/iban"
 version = "0.1.1"
 edition = "2021"
+rust-version = "1.65.0"
 
 [features]
 default = ["std"]
@@ -21,3 +22,6 @@ phf_codegen = "0.11"
 quote = "1"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+test-case = "3.1.0"

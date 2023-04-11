@@ -1,0 +1,30 @@
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+name: no_std
+
+jobs:
+  no_std:
+    runs-on: ubuntu-latest
+    name: no_std / ${{ matrix.target }}
+    strategy:
+      matrix:
+        target: [thumbv7m-none-eabi, aarch64-unknown-none]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: cargo check
+        run: cargo check --target ${{ matrix.target }} --no-default-features

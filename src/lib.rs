@@ -201,7 +201,9 @@ impl Iban {
 mod tests {
     use core::str::FromStr;
 
-    use super::{digits, Iban};
+    use test_case::test_case;
+
+    use crate::{digits, Iban, ParseError};
 
     #[test]
     fn simple_digits() {
@@ -223,123 +225,144 @@ mod tests {
         assert_eq!(iban.to_string().as_str(), "AE07 0331 2345 6789 0123 456");
     }
 
-    #[test]
-    fn examples_from_registry() {
-        Iban::from_str("AA110011123Z5678").expect("valid iiban");
-        Iban::from_str("AD1200012030200359100100").expect("valid iban for AD");
-        Iban::from_str("AE070331234567890123456").expect("valid iban for AE");
-        Iban::from_str("AL47212110090000000235698741").expect("valid iban for AL");
-        Iban::from_str("AO44123412341234123412341").expect("valid iban for AO");
-        Iban::from_str("AT611904300234573201").expect("valid iban for AT");
-        Iban::from_str("AX2112345600000785").expect("valid iban for AX");
-        Iban::from_str("AZ21NABZ00000000137010001944").expect("valid iban for AZ");
-        Iban::from_str("BA391290079401028494").expect("valid iban for BA");
-        Iban::from_str("BE68539007547034").expect("valid iban for BE");
-        Iban::from_str("BF4512341234123412341234123").expect("valid iban for BF");
-        Iban::from_str("BG80BNBG96611020345678").expect("valid iban for BG");
-        Iban::from_str("BH67BMAG00001299123456").expect("valid iban for BH");
-        Iban::from_str("BI33123412341234").expect("valid iban for BI");
-        Iban::from_str("BJ83A12312341234123412341234").expect("valid iban for BJ");
-        Iban::from_str("BL6820041010050500013M02606").expect("valid iban for BL");
-        Iban::from_str("BR9700360305000010009795493P1").expect("valid iban for BR");
-        Iban::from_str("BY13NBRB3600900000002Z00AB00").expect("valid iban for BY");
-        Iban::from_str("CF4220001000010120069700160").expect("valid iban for CF");
-        Iban::from_str("CG3930013020003710721836132").expect("valid iban for CG");
-        Iban::from_str("CH9300762011623852957").expect("valid iban for CH");
-        Iban::from_str("CI77A12312341234123412341234").expect("valid iban for CI");
-        Iban::from_str("CM1512341234123412341234123").expect("valid iban for CM");
-        Iban::from_str("CR05015202001026284066").expect("valid iban for CR");
-        Iban::from_str("CV05123412341234123412341").expect("valid iban for CV");
-        Iban::from_str("CY17002001280000001200527600").expect("valid iban for CY");
-        Iban::from_str("CZ6508000000192000145399").expect("valid iban for CZ");
-        Iban::from_str("DE89370400440532013000").expect("valid iban for DE");
-        Iban::from_str("DJ2110002010010409943020008").expect("valid iban for DJ");
-        Iban::from_str("DK5000400440116243").expect("valid iban for DK");
-        Iban::from_str("DO28BAGR00000001212453611324").expect("valid iban for DO");
-        Iban::from_str("DZ3512341234123412341234").expect("valid iban for DZ");
-        Iban::from_str("EE382200221020145685").expect("valid iban for EE");
-        Iban::from_str("EG380019000500000000263180002").expect("valid iban for EG");
-        Iban::from_str("ES9121000418450200051332").expect("valid iban for ES");
-        Iban::from_str("FI2112345600000785").expect("valid iban for FI");
-        Iban::from_str("FO2000400440116243").expect("valid iban for FO");
-        Iban::from_str("FR1420041010050500013M02606").expect("valid iban for FR");
-        Iban::from_str("GA2142001007341520000106963").expect("valid iban for GA");
-        Iban::from_str("GB29NWBK60161331926819").expect("valid iban for GB");
-        Iban::from_str("GE29NB0000000101904917").expect("valid iban for GE");
-        Iban::from_str("GF4120041010050500013M02606").expect("valid iban for GF");
-        Iban::from_str("GI75NWBK000000007099453").expect("valid iban for GI");
-        Iban::from_str("GL2000400440116243").expect("valid iban for GL");
-        Iban::from_str("GP1120041010050500013M02606").expect("valid iban for GP");
-        Iban::from_str("GQ7050002001003715228190196").expect("valid iban for GQ");
-        Iban::from_str("GR1601101250000000012300695").expect("valid iban for GR");
-        Iban::from_str("GT82TRAJ01020000001210029690").expect("valid iban for GT");
-        Iban::from_str("GW04GW1430010181800637601").expect("valid iban for GW");
-        Iban::from_str("HN54PISA00000000000000123124").expect("valid iban for HN");
-        Iban::from_str("HR1210010051863000160").expect("valid iban for HR");
-        Iban::from_str("HU42117730161111101800000000").expect("valid iban for HU");
-        Iban::from_str("IE29AIBK93115212345678").expect("valid iban for IE");
-        Iban::from_str("IL620108000000099999999").expect("valid iban for IL");
-        Iban::from_str("IQ98NBIQ850123456789012").expect("valid iban for IQ");
-        Iban::from_str("IR081234123412341234123412").expect("valid iban for IR");
-        Iban::from_str("IS140159260076545510730339").expect("valid iban for IS");
-        Iban::from_str("IT60X0542811101000000123456").expect("valid iban for IT");
-        Iban::from_str("JO94CBJO0010000000000131000302").expect("valid iban for JO");
-        Iban::from_str("KM4600005000010010904400137").expect("valid iban for KM");
-        Iban::from_str("KW81CBKU0000000000001234560101").expect("valid iban for KW");
-        Iban::from_str("KZ86125KZT5004100100").expect("valid iban for KZ");
-        Iban::from_str("LB62099900000001001901229114").expect("valid iban for LB");
-        Iban::from_str("LC55HEMM000100010012001200023015").expect("valid iban for LC");
-        Iban::from_str("LI21088100002324013AA").expect("valid iban for LI");
-        Iban::from_str("LT121000011101001000").expect("valid iban for LT");
-        Iban::from_str("LU280019400644750000").expect("valid iban for LU");
-        Iban::from_str("LV80BANK0000435195001").expect("valid iban for LV");
-        Iban::from_str("MA64011519000001205000534921").expect("valid iban for MA");
-        Iban::from_str("MC5811222000010123456789030").expect("valid iban for MC");
-        Iban::from_str("MD24AG000225100013104168").expect("valid iban for MD");
-        Iban::from_str("ME25505000012345678951").expect("valid iban for ME");
-        Iban::from_str("MF8420041010050500013M02606").expect("valid iban for MF");
-        Iban::from_str("MG4012341234123412341234123").expect("valid iban for MG");
-        Iban::from_str("MK07250120000058984").expect("valid iban for MK");
-        Iban::from_str("ML75A12312341234123412341234").expect("valid iban for ML");
-        Iban::from_str("MQ5120041010050500013M02606").expect("valid iban for MQ");
-        Iban::from_str("MR1300020001010000123456753").expect("valid iban for MR");
-        Iban::from_str("MT84MALT011000012345MTLCAST001S").expect("valid iban for MT");
-        Iban::from_str("MU17BOMM0101101030300200000MUR").expect("valid iban for MU");
-        Iban::from_str("MZ97123412341234123412341").expect("valid iban for MZ");
-        Iban::from_str("NC8420041010050500013M02606").expect("valid iban for NC");
-        Iban::from_str("NE58NE0380100100130305000268").expect("valid iban for NE");
-        Iban::from_str("NI92BAMC000000000000000003123123").expect("valid iban for NI");
-        Iban::from_str("NL91ABNA0417164300").expect("valid iban for NL");
-        Iban::from_str("NO9386011117947").expect("valid iban for NO");
-        Iban::from_str("PF5720041010050500013M02606").expect("valid iban for PF");
-        Iban::from_str("PK36SCBL0000001123456702").expect("valid iban for PK");
-        Iban::from_str("PL61109010140000071219812874").expect("valid iban for PL");
-        Iban::from_str("PM3620041010050500013M02606").expect("valid iban for PM");
-        Iban::from_str("PS92PALS000000000400123456702").expect("valid iban for PS");
-        Iban::from_str("PT50000201231234567890154").expect("valid iban for PT");
-        Iban::from_str("QA58DOHB00001234567890ABCDEFG").expect("valid iban for QA");
-        Iban::from_str("RE4220041010050500013M02606").expect("valid iban for RE");
-        Iban::from_str("RO49AAAA1B31007593840000").expect("valid iban for RO");
-        Iban::from_str("RS35260005601001611379").expect("valid iban for RS");
-        Iban::from_str("SA0380000000608010167519").expect("valid iban for SA");
-        Iban::from_str("SC18SSCB11010000000000001497USD").expect("valid iban for SC");
-        Iban::from_str("SE4550000000058398257466").expect("valid iban for SE");
-        Iban::from_str("SI56191000000123438").expect("valid iban for SI");
-        Iban::from_str("SK3112000000198742637541").expect("valid iban for SK");
-        Iban::from_str("SM86U0322509800000000270100").expect("valid iban for SM");
-        Iban::from_str("SN15A12312341234123412341234").expect("valid iban for SN");
-        Iban::from_str("ST68000100010051845310112").expect("valid iban for ST");
-        Iban::from_str("SV62CENR00000000000000700025").expect("valid iban for SV");
-        Iban::from_str("TD8960003000203710253860174").expect("valid iban for TD");
-        Iban::from_str("TF2120041010050500013M02606").expect("valid iban for TF");
-        Iban::from_str("TG53TG0090604310346500400070").expect("valid iban for TG");
-        Iban::from_str("TL380080012345678910157").expect("valid iban for TL");
-        Iban::from_str("TN5910006035183598478831").expect("valid iban for TN");
-        Iban::from_str("TR330006100519786457841326").expect("valid iban for TR");
-        Iban::from_str("UA213996220000026007233566001").expect("valid iban for UA");
-        Iban::from_str("VG96VPVG0000012345678901").expect("valid iban for VG");
-        Iban::from_str("WF9120041010050500013M02606").expect("valid iban for WF");
-        Iban::from_str("XK051212012345678906").expect("valid iban for XK");
-        Iban::from_str("YT3120041010050500013M02606").expect("valid iban for YT");
+    #[test_case("AA110011123Z5678"; "valid AA iban")]
+    #[test_case("AD1200012030200359100100"; "valid AD iban")]
+    #[test_case("AE070331234567890123456"; "valid AE iban")]
+    #[test_case("AL47212110090000000235698741"; "valid AL iban")]
+    #[test_case("AO44123412341234123412341"; "valid AO iban")]
+    #[test_case("AT611904300234573201"; "valid AT iban")]
+    #[test_case("AX2112345600000785"; "valid AX iban")]
+    #[test_case("AZ21NABZ00000000137010001944"; "valid AZ iban")]
+    #[test_case("BA391290079401028494"; "valid BA iban")]
+    #[test_case("BE68539007547034"; "valid BE iban")]
+    #[test_case("BF4512341234123412341234123"; "valid BF iban")]
+    #[test_case("BG80BNBG96611020345678"; "valid BG iban")]
+    #[test_case("BH67BMAG00001299123456"; "valid BH iban")]
+    #[test_case("BI33123412341234"; "valid BI iban")]
+    #[test_case("BJ83A12312341234123412341234"; "valid BJ iban")]
+    #[test_case("BL6820041010050500013M02606"; "valid BL iban")]
+    #[test_case("BR9700360305000010009795493P1"; "valid BR iban")]
+    #[test_case("BY13NBRB3600900000002Z00AB00"; "valid BY iban")]
+    #[test_case("CF4220001000010120069700160"; "valid CF iban")]
+    #[test_case("CG3930013020003710721836132"; "valid CG iban")]
+    #[test_case("CH9300762011623852957"; "valid CH iban")]
+    #[test_case("CI77A12312341234123412341234"; "valid CI iban")]
+    #[test_case("CM1512341234123412341234123"; "valid CM iban")]
+    #[test_case("CR05015202001026284066"; "valid CR iban")]
+    #[test_case("CV05123412341234123412341"; "valid CV iban")]
+    #[test_case("CY17002001280000001200527600"; "valid CY iban")]
+    #[test_case("CZ6508000000192000145399"; "valid CZ iban")]
+    #[test_case("DE89370400440532013000"; "valid DE iban")]
+    #[test_case("DJ2110002010010409943020008"; "valid DJ iban")]
+    #[test_case("DK5000400440116243"; "valid DK iban")]
+    #[test_case("DO28BAGR00000001212453611324"; "valid DO iban")]
+    #[test_case("DZ3512341234123412341234"; "valid DZ iban")]
+    #[test_case("EE382200221020145685"; "valid EE iban")]
+    #[test_case("EG380019000500000000263180002"; "valid EG iban")]
+    #[test_case("ES9121000418450200051332"; "valid ES iban")]
+    #[test_case("FI2112345600000785"; "valid FI iban")]
+    #[test_case("FO2000400440116243"; "valid FO iban")]
+    #[test_case("FR1420041010050500013M02606"; "valid FR iban")]
+    #[test_case("GA2142001007341520000106963"; "valid GA iban")]
+    #[test_case("GB29NWBK60161331926819"; "valid GB iban")]
+    #[test_case("GE29NB0000000101904917"; "valid GE iban")]
+    #[test_case("GF4120041010050500013M02606"; "valid GF iban")]
+    #[test_case("GI75NWBK000000007099453"; "valid GI iban")]
+    #[test_case("GL2000400440116243"; "valid GL iban")]
+    #[test_case("GP1120041010050500013M02606"; "valid GP iban")]
+    #[test_case("GQ7050002001003715228190196"; "valid GQ iban")]
+    #[test_case("GR1601101250000000012300695"; "valid GR iban")]
+    #[test_case("GT82TRAJ01020000001210029690"; "valid GT iban")]
+    #[test_case("GW04GW1430010181800637601"; "valid GW iban")]
+    #[test_case("HN54PISA00000000000000123124"; "valid HN iban")]
+    #[test_case("HR1210010051863000160"; "valid HR iban")]
+    #[test_case("HU42117730161111101800000000"; "valid HU iban")]
+    #[test_case("IE29AIBK93115212345678"; "valid IE iban")]
+    #[test_case("IL620108000000099999999"; "valid IL iban")]
+    #[test_case("IQ98NBIQ850123456789012"; "valid IQ iban")]
+    #[test_case("IR081234123412341234123412"; "valid IR iban")]
+    #[test_case("IS140159260076545510730339"; "valid IS iban")]
+    #[test_case("IT60X0542811101000000123456"; "valid IT iban")]
+    #[test_case("JO94CBJO0010000000000131000302"; "valid JO iban")]
+    #[test_case("KM4600005000010010904400137"; "valid KM iban")]
+    #[test_case("KW81CBKU0000000000001234560101"; "valid KW iban")]
+    #[test_case("KZ86125KZT5004100100"; "valid KZ iban")]
+    #[test_case("LB62099900000001001901229114"; "valid LB iban")]
+    #[test_case("LC55HEMM000100010012001200023015"; "valid LC iban")]
+    #[test_case("LI21088100002324013AA"; "valid LI iban")]
+    #[test_case("LT121000011101001000"; "valid LT iban")]
+    #[test_case("LU280019400644750000"; "valid LU iban")]
+    #[test_case("LV80BANK0000435195001"; "valid LV iban")]
+    #[test_case("MA64011519000001205000534921"; "valid MA iban")]
+    #[test_case("MC5811222000010123456789030"; "valid MC iban")]
+    #[test_case("MD24AG000225100013104168"; "valid MD iban")]
+    #[test_case("ME25505000012345678951"; "valid ME iban")]
+    #[test_case("MF8420041010050500013M02606"; "valid MF iban")]
+    #[test_case("MG4012341234123412341234123"; "valid MG iban")]
+    #[test_case("MK07250120000058984"; "valid MK iban")]
+    #[test_case("ML75A12312341234123412341234"; "valid ML iban")]
+    #[test_case("MQ5120041010050500013M02606"; "valid MQ iban")]
+    #[test_case("MR1300020001010000123456753"; "valid MR iban")]
+    #[test_case("MT84MALT011000012345MTLCAST001S"; "valid MT iban")]
+    #[test_case("MU17BOMM0101101030300200000MUR"; "valid MU iban")]
+    #[test_case("MZ97123412341234123412341"; "valid MZ iban")]
+    #[test_case("NC8420041010050500013M02606"; "valid NC iban")]
+    #[test_case("NE58NE0380100100130305000268"; "valid NE iban")]
+    #[test_case("NI92BAMC000000000000000003123123"; "valid NI iban")]
+    #[test_case("NL91ABNA0417164300"; "valid NL iban")]
+    #[test_case("NO9386011117947"; "valid NO iban")]
+    #[test_case("PF5720041010050500013M02606"; "valid PF iban")]
+    #[test_case("PK36SCBL0000001123456702"; "valid PK iban")]
+    #[test_case("PL61109010140000071219812874"; "valid PL iban")]
+    #[test_case("PM3620041010050500013M02606"; "valid PM iban")]
+    #[test_case("PS92PALS000000000400123456702"; "valid PS iban")]
+    #[test_case("PT50000201231234567890154"; "valid PT iban")]
+    #[test_case("QA58DOHB00001234567890ABCDEFG"; "valid QA iban")]
+    #[test_case("RE4220041010050500013M02606"; "valid RE iban")]
+    #[test_case("RO49AAAA1B31007593840000"; "valid RO iban")]
+    #[test_case("RS35260005601001611379"; "valid RS iban")]
+    #[test_case("SA0380000000608010167519"; "valid SA iban")]
+    #[test_case("SC18SSCB11010000000000001497USD"; "valid SC iban")]
+    #[test_case("SE4550000000058398257466"; "valid SE iban")]
+    #[test_case("SI56191000000123438"; "valid SI iban")]
+    #[test_case("SK3112000000198742637541"; "valid SK iban")]
+    #[test_case("SM86U0322509800000000270100"; "valid SM iban")]
+    #[test_case("SN15A12312341234123412341234"; "valid SN iban")]
+    #[test_case("ST68000100010051845310112"; "valid ST iban")]
+    #[test_case("SV62CENR00000000000000700025"; "valid SV iban")]
+    #[test_case("TD8960003000203710253860174"; "valid TD iban")]
+    #[test_case("TF2120041010050500013M02606"; "valid TF iban")]
+    #[test_case("TG53TG0090604310346500400070"; "valid TG iban")]
+    #[test_case("TL380080012345678910157"; "valid TL iban")]
+    #[test_case("TN5910006035183598478831"; "valid TN iban")]
+    #[test_case("TR330006100519786457841326"; "valid TR iban")]
+    #[test_case("UA213996220000026007233566001"; "valid UA iban")]
+    #[test_case("VG96VPVG0000012345678901"; "valid VG iban")]
+    #[test_case("WF9120041010050500013M02606"; "valid WF iban")]
+    #[test_case("XK051212012345678906"; "valid XK iban")]
+    #[test_case("YT3120041010050500013M02606"; "valid YT iban")]
+    fn is_valid(original: &str) {
+        let iban = Iban::from_str(original).expect("iban should be valid");
+
+        assert_eq!(iban.country_code(), &original[..2]);
+        assert_eq!(iban.check_digits(), &original[2..4]);
+        assert_eq!(iban.bban(), &original[4..]);
+
+        assert_eq!(iban.as_ref(), original);
+        assert_eq!(&*iban, original);
+        assert_eq!(format!("{:?}", iban), format!("{:?}", original));
+    }
+
+    #[test_case("aT4120041010050500013M02606", ParseError::CountryCode; "country code")]
+    #[test_case("YTa120041010050500013M02606", ParseError::CheckDigit; "check digit")]
+    #[test_case("YT412*041010050500013M02606", ParseError::InvalidCharacter; "invalid character")]
+    #[test_case("SC18SSCB11010000000000001497USDABCD", ParseError::TooLong; "too long")]
+    #[test_case("ZZ18SSCB11010000000000001497USD", ParseError::UnknownCountry; "unknown country")]
+    #[test_case("AA110011123Z567891238", ParseError::InvalidLength; "invalid length")]
+    #[test_case("YT4120041010050500013M02606", ParseError::WrongChecksum; "wrong checksum")]
+    #[test_case("YT3120041010050500013M0260a", ParseError::InvalidBban; "invalid bban")]
+    fn assert_error(iban: &str, expected_err: ParseError) {
+        assert_eq!(Iban::from_str(iban), Err(expected_err));
+        assert!(!expected_err.to_string().is_empty());
     }
 }
