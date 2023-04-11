@@ -25,3 +25,6 @@ serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 test-case = "3.1.0"
+
+# NOTE: test-case-core has an invalid minimal version for syn.
+syn = { version = "1.0.12", default-features = false }
