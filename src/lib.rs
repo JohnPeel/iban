@@ -168,9 +168,9 @@ impl FromStr for Iban {
         let iban = Self(iban);
 
         let country_code = iban.country_code();
-        let Some(&(expected_length, validation, ..)) = COUNTRIES.get(country_code) else {
-            return Err(ParseError::UnknownCountry);
-        };
+        let &(expected_length, validation, ..) = COUNTRIES
+            .get(country_code)
+            .ok_or(ParseError::UnknownCountry)?;
 
         if expected_length != iban.len() {
             return Err(ParseError::InvalidLength);

@@ -72,7 +72,7 @@ jobs:
     strategy:
       matrix:
         msrv:
-          - 1.65.0
+          - 1.60.0
     name: msrv / ${{ matrix.msrv }}
     steps:
       - uses: actions/checkout@v3
