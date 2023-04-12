@@ -14,23 +14,23 @@ include!(concat!(env!("OUT_DIR"), "/countries.rs"));
 const IBAN_MAX_LENGTH: usize = 34;
 
 /// Represents an IBAN.
-/// 
+///
 /// Use [`FromStr`](std::str::FromStr) to contruct an Iban.
-/// 
-/// A valid IBAN satisfies the length defined for that country, has a valid checksum and has 
+///
+/// A valid IBAN satisfies the length defined for that country, has a valid checksum and has
 /// a BBAN format as defined in the IBAN registry.
-/// 
+///
 /// Spaced formatting can be obtained from the [`Display`](std::fmt::Display) implementation.
-/// 
+///
 /// Electronic formatting can be obtained from the [`Debug`](std::fmt::Debug), [`Deref`](std::ops::Deref),
 /// or [`AsRef`](std::convert::AsRef) implementations.
-/// 
+///
 /// See crate level documentation for more information.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Iban(ArrayString<IBAN_MAX_LENGTH>);
 
 /// Represents a BBAN.
-/// 
+///
 /// Use [`Iban::bban`] to obtain this.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Bban(ArrayString<IBAN_MAX_LENGTH>);
@@ -93,7 +93,7 @@ pub enum ParseError {
     /// The IBAN is too long to be an IBAN.
     TooLong,
     /// The country of this IBAN is unknown.
-    /// 
+    ///
     /// If you're sure that it should be known, please open an issue.
     UnknownCountry,
     /// The IBAN does not match the expected length.
@@ -274,6 +274,12 @@ impl Iban {
     #[must_use]
     pub const fn bban(&self) -> Bban {
         Bban(self.0)
+    }
+
+    /// Parse a string as an Iban.
+    #[inline]
+    pub fn parse(s: &str) -> Result<Self, ParseError> {
+        FromStr::from_str(s)
     }
 }
 
