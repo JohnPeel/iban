@@ -1,4 +1,6 @@
+#![doc = include_str!("../README.md")]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![warn(missing_docs)]
 
 use core::{fmt, ops::Deref, str::FromStr};
 
@@ -11,9 +13,25 @@ include!(concat!(env!("OUT_DIR"), "/countries.rs"));
 
 const IBAN_MAX_LENGTH: usize = 34;
 
+/// Represents an IBAN.
+/// 
+/// Use [`FromStr`](std::str::FromStr) to contruct an Iban.
+/// 
+/// A valid IBAN satisfies the length defined for that country, has a valid checksum and has 
+/// a BBAN format as defined in the IBAN registry.
+/// 
+/// Spaced formatting can be obtained from the [`Display`](std::fmt::Display) implementation.
+/// 
+/// Electronic formatting can be obtained from the [`Debug`](std::fmt::Debug), [`Deref`](std::ops::Deref),
+/// or [`AsRef`](std::convert::AsRef) implementations.
+/// 
+/// See crate level documentation for more information.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Iban(ArrayString<IBAN_MAX_LENGTH>);
 
+/// Represents a BBAN.
+/// 
+/// Use [`Iban::bban`] to obtain this.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Bban(ArrayString<IBAN_MAX_LENGTH>);
 
@@ -63,15 +81,26 @@ impl fmt::Display for Bban {
     }
 }
 
+/// An error indicating the IBAN could not be parsed.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub enum ParseError {
+    /// The country code of the IBAN are not uppercase ascii letters.
     CountryCode,
+    /// The check digits of the IBAN are not ascii digits.
     CheckDigit,
+    /// The IBAN contains a non ascii alphanumeric character.
     InvalidCharacter,
+    /// The IBAN is too long to be an IBAN.
     TooLong,
+    /// The country of this IBAN is unknown.
+    /// 
+    /// If you're sure that it should be known, please open an issue.
     UnknownCountry,
+    /// The IBAN does not match the expected length.
     InvalidLength,
+    /// The BBAN does not match the expected format.
     InvalidBban,
+    /// Calculating the checksum of the IBAN gave and invalid result.
     WrongChecksum,
 }
 
@@ -226,18 +255,21 @@ impl FromStr for Iban {
 }
 
 impl Iban {
+    /// Get the country code of the IBAN.
     #[inline]
     #[must_use]
     pub fn country_code(&self) -> &str {
         &self[0..2]
     }
 
+    /// Get the check digits of the IBAN.
     #[inline]
     #[must_use]
     pub fn check_digits(&self) -> &str {
         &self[2..4]
     }
 
+    /// Get the BBAN of the IBAN.
     #[inline]
     #[must_use]
     pub const fn bban(&self) -> Bban {
@@ -248,10 +280,11 @@ impl Iban {
 impl Bban {
     #[inline]
     #[must_use]
-    pub fn country_code(&self) -> &str {
+    fn country_code(&self) -> &str {
         &self.0[0..2]
     }
 
+    /// Get the bank identifier of the BBAN (if it has one).
     #[inline]
     #[must_use]
     pub fn bank_identifier(&self) -> Option<&str> {
@@ -263,6 +296,7 @@ impl Bban {
             .map(|(start, end)| &self[start..end])
     }
 
+    /// Get the branch identifier of the BBAN (if it has one).
     #[inline]
     #[must_use]
     pub fn branch_identifier(&self) -> Option<&str> {
@@ -274,6 +308,7 @@ impl Bban {
             .map(|(start, end)| &self[start..end])
     }
 
+    /// Get the checksum of the BBAN (if it has one).
     #[inline]
     #[must_use]
     pub fn checksum(&self) -> Option<&str> {
