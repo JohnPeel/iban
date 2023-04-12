@@ -22,7 +22,7 @@ Add library as a dependency to Cargo.toml.
 ```toml
 ...
 [dependencies]
-iban = "1"
+iban = "0.1"
 ...
 ```
 
