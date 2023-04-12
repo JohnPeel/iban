@@ -42,3 +42,17 @@ pub fn digits(mut value: u8) -> impl Iterator<Item = u8> {
         // Ensure at least one value (0) is provided by this iterator.
         .ensure_one(0)
 }
+
+#[inline]
+pub fn chunk_str(s: &str, size: usize) -> impl Iterator<Item = &str> {
+    let mut remaining = s;
+    core::iter::from_fn(move || {
+        if remaining.is_empty() {
+            return None;
+        }
+
+        let (item, rest) = remaining.split_at(remaining.len().min(size));
+        remaining = rest;
+        Some(item)
+    })
+}

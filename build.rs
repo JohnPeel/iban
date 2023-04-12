@@ -16,15 +16,15 @@ struct Record {
     iban_format_swift: String,
     //iban_format_regex: String,
     iban_length: usize,
-    //bban_bankid_start_offset: Option<usize>,
-    //bban_bankid_stop_offset: Option<usize>,
-    //bban_branchid_start_offset: Option<usize>,
-    //bban_branchid_stop_offset: Option<usize>,
+    bban_bankid_start_offset: Option<usize>,
+    bban_bankid_stop_offset: Option<usize>,
+    bban_branchid_start_offset: Option<usize>,
+    bban_branchid_stop_offset: Option<usize>,
     //registry_edition: String,
     //country_sepa: String,
     //swift_official: String,
-    //bban_checksum_start_offset: Option<usize>,
-    //bban_checksum_stop_offset: Option<usize>,
+    bban_checksum_start_offset: Option<usize>,
+    bban_checksum_stop_offset: Option<usize>,
     //country_code_iana: String,
     //country_code_iso3166_1_alpha2: String,
     //parent_registrar: String,
@@ -55,6 +55,12 @@ fn main() {
                  country_code,
                  iban_format_swift,
                  iban_length,
+                 bban_bankid_start_offset,
+                 bban_bankid_stop_offset,
+                 bban_branchid_start_offset,
+                 bban_branchid_stop_offset,
+                 bban_checksum_start_offset,
+                 bban_checksum_stop_offset,
              }| {
                 let captures = pattern
                     .captures_iter(&iban_format_swift[2..])
@@ -72,10 +78,40 @@ fn main() {
                     .map(|(len, char)| quote! { (#len, #char) })
                     .chain(captures);
 
+                let bankid_offset = if let (Some(start), Some(end)) =
+                    (bban_bankid_start_offset, bban_bankid_stop_offset)
+                {
+                    quote! { Some((#start, #end + 1)) }
+                } else {
+                    quote! { None }
+                };
+
+                let branch_offset = if let (Some(start), Some(end)) =
+                    (bban_branchid_start_offset, bban_branchid_stop_offset)
+                {
+                    quote! { Some((#start, #end + 1)) }
+                } else {
+                    quote! { None }
+                };
+
+                let checksum_offset = if let (Some(start), Some(end)) =
+                    (bban_checksum_start_offset, bban_checksum_stop_offset)
+                {
+                    quote! { Some((#start, #end + 1)) }
+                } else {
+                    quote! { None }
+                };
+
                 (
                     country_code,
                     quote! {
-                        (#iban_length, &[#(#captures),*])
+                        (
+                            #iban_length,
+                            &[#(#captures),*],
+                            #bankid_offset,
+                            #branch_offset,
+                            #checksum_offset,
+                        )
                     },
                 )
             },
@@ -83,7 +119,7 @@ fn main() {
         .collect::<Vec<_>>();
 
     let mut map = phf_codegen::Map::new();
-    for (key, value) in countries.iter() {
+    for (key, value) in &countries {
         map.entry(key.as_str(), value.to_string().as_str());
     }
     let countries = map.build();
@@ -92,7 +128,7 @@ fn main() {
     std::fs::write(
         out_path.join("countries.rs"),
         format!(
-            "#[allow(clippy::type_complexity, clippy::unreadable_literal)]\nstatic COUNTRIES: ::phf::Map<&'static str, (usize, &'static [(usize, char)])> = {countries};\n",
+            "#[allow(clippy::type_complexity, clippy::unreadable_literal, clippy::identity_op)]\nstatic COUNTRIES: ::phf::Map<&'static str, (usize, &'static [(usize, char)], Option<(usize, usize)>, Option<(usize, usize)>, Option<(usize, usize)>)> = {countries};\n",
         ),
     )
     .expect("failed to write countries file");
