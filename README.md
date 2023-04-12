@@ -26,11 +26,12 @@ iban = "1"
 ...
 ```
 
-Construct a `Iban` type by using `Iban::parse` or `FromStr::from_str`.
+Construct a `Iban` type by using `str::parse`, `FromStr::from_str`, or `Iban::parse`.
 
 ```rust
 use iban::Iban;
-let iban: Iban = Iban::parse("AA110011123Z5678")
+let iban: Iban = "AA110011123Z5678"
+    .parse()
     .unwrap_or_else(|err| {
         // This example panics, but you should handle the error cases properly.
         panic!("invalid iban: {err}");
