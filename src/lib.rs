@@ -290,6 +290,13 @@ impl Iban {
         Bban(self.0)
     }
 
+    /// Get the IBAN as a str.
+    #[inline]
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        self
+    }
+
     /// Parse a string as an Iban.
     #[inline]
     pub fn parse(s: &str) -> Result<Self, ParseError> {
@@ -339,13 +346,47 @@ impl Bban {
             .copied()
             .map(|(start, end)| &self[start..end])
     }
+
+    /// Get the BBAN as a str.
+    #[inline]
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        self
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use core::{convert, fmt, ops};
+
     use test_case::test_case;
 
     use crate::{digits, Iban, ParseError};
+
+    fn is_clone<T: Clone>(value: &T) {
+        let _value = value.clone();
+    }
+
+    fn is_copy<T: Copy>(value: T) {
+        let _value = value;
+        let _other = value;
+    }
+
+    fn is_debug<T: fmt::Debug>(value: &T) {
+        assert!(!format!("{value:?}").is_empty());
+    }
+
+    fn is_display<T: fmt::Display>(value: &T) {
+        assert!(!format!("{value}").is_empty());
+    }
+
+    fn is_deref_str<T: ops::Deref<Target = str>>(value: &T) {
+        let _value = value.deref();
+    }
+
+    fn is_asref_str<T: convert::AsRef<str>>(value: &T) {
+        let _value = value.as_ref();
+    }
 
     #[test]
     fn simple_digits() {
@@ -499,15 +540,15 @@ mod tests {
 
         assert_eq!(iban.country_code(), &original[..2]);
         assert_eq!(iban.check_digits(), &original[2..4]);
-        assert_eq!(&*iban.bban(), &original[4..]);
+        assert_eq!(iban.bban().as_str(), &original[4..]);
+        assert_eq!(iban.as_str(), original);
 
-        assert_eq!(iban.as_ref(), original);
-        assert_eq!(&*iban, original);
-        assert_eq!(format!("{:?}", iban), format!("{:?}", original));
-
-        #[allow(clippy::clone_on_copy)]
-        let iban2 = iban.clone();
-        assert_eq!(iban, iban2);
+        is_clone(&iban);
+        is_copy(iban);
+        is_debug(&iban);
+        is_display(&iban);
+        is_deref_str(&iban);
+        is_asref_str(&iban);
     }
 
     #[test_case("aT4120041010050500013M02606", ParseError::CountryCode; "country code")]
@@ -520,7 +561,11 @@ mod tests {
     #[test_case("YT3120041010050500013M0260a", ParseError::InvalidBban; "invalid bban")]
     fn parse_error(iban: &str, expected_err: ParseError) {
         assert_eq!(Iban::parse(iban), Err(expected_err));
-        assert!(!expected_err.to_string().is_empty());
+
+        is_clone(&expected_err);
+        is_copy(expected_err);
+        is_debug(&expected_err);
+        is_display(&expected_err);
     }
 
     // This is only valid because BL's IBAN format allows lowercase in that position.
@@ -538,17 +583,17 @@ mod tests {
     fn bban(original: &str, bank: Option<&str>, branch: Option<&str>, checksum: Option<&str>) {
         let iban = Iban::parse(original).expect("iban is valid");
         let bban = iban.bban();
-        assert_eq!(&iban[4..], bban.as_ref());
-
-        assert_eq!(&*bban, &original[4..]);
-        assert_eq!(format!("{:?}", bban), format!("{:?}", &original[4..]));
+        assert_eq!(bban.as_str(), &original[4..]);
 
         assert_eq!(bban.bank_identifier(), bank);
         assert_eq!(bban.branch_identifier(), branch);
         assert_eq!(bban.checksum(), checksum);
 
-        #[allow(clippy::clone_on_copy)]
-        let bban2 = bban.clone();
-        assert_eq!(bban, bban2);
+        is_clone(&bban);
+        is_copy(bban);
+        is_debug(&bban);
+        is_display(&bban);
+        is_deref_str(&bban);
+        is_asref_str(&bban);
     }
 }
