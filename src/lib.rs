@@ -329,8 +329,6 @@ impl Bban {
 
 #[cfg(test)]
 mod tests {
-    use core::str::FromStr;
-
     use test_case::test_case;
 
     use crate::{digits, Iban, ParseError};
@@ -348,20 +346,20 @@ mod tests {
 
     #[test]
     fn iban_display_impl() {
-        let iban = Iban::from_str("AD1200012030200359100100").unwrap();
+        let iban = Iban::parse("AD1200012030200359100100").unwrap();
         assert_eq!(iban.to_string().as_str(), "AD12 0001 2030 2003 5910 0100");
 
-        let iban = Iban::from_str("AE070331234567890123456").unwrap();
+        let iban = Iban::parse("AE070331234567890123456").unwrap();
         assert_eq!(iban.to_string().as_str(), "AE07 0331 2345 6789 0123 456");
     }
 
     #[test]
     fn bban_display_impl() {
-        let iban = Iban::from_str("AD1200012030200359100100").unwrap();
+        let iban = Iban::parse("AD1200012030200359100100").unwrap();
         let bban = iban.bban();
         assert_eq!(bban.to_string().as_str(), "0001 2030 2003 5910 0100");
 
-        let iban = Iban::from_str("AE070331234567890123456").unwrap();
+        let iban = Iban::parse("AE070331234567890123456").unwrap();
         let bban = iban.bban();
         assert_eq!(bban.to_string().as_str(), "0331 2345 6789 0123 456");
     }
@@ -483,7 +481,7 @@ mod tests {
     #[test_case("XK051212012345678906"; "XK")]
     #[test_case("YT3120041010050500013M02606"; "YT")]
     fn iban(original: &str) {
-        let iban = Iban::from_str(original).expect("iban should be valid");
+        let iban = Iban::parse(original).expect("iban should be valid");
 
         assert_eq!(iban.country_code(), &original[..2]);
         assert_eq!(iban.check_digits(), &original[2..4]);
@@ -506,7 +504,7 @@ mod tests {
     #[test_case("YT4120041010050500013M02606", ParseError::WrongChecksum; "wrong checksum")]
     #[test_case("YT3120041010050500013M0260a", ParseError::InvalidBban; "invalid bban")]
     fn parse_error(iban: &str, expected_err: ParseError) {
-        assert_eq!(Iban::from_str(iban), Err(expected_err));
+        assert_eq!(Iban::parse(iban), Err(expected_err));
         assert!(!expected_err.to_string().is_empty());
     }
 
@@ -515,7 +513,7 @@ mod tests {
     #[test_case("BL6820041010050500013M02606"; "uppercase BL")]
     #[test_case("BL6820041010050500013m02606"; "lowercase BL")]
     fn case_sensitivity(iban: &str) {
-        assert!(Iban::from_str(iban).is_ok());
+        assert!(Iban::parse(iban).is_ok());
     }
 
     #[test_case("BL6820041010050500013M02606", Some("20041"), Some("01005"), Some("06"); "BL")]
@@ -523,7 +521,7 @@ mod tests {
     #[test_case("BE68539007547034", Some("539"), None, Some("34"); "BE")]
     #[test_case("IQ98NBIQ850123456789012", Some("NBIQ"), Some("850"), None; "IQ")]
     fn bban(original: &str, bank: Option<&str>, branch: Option<&str>, checksum: Option<&str>) {
-        let iban = Iban::from_str(original).expect("iban is valid");
+        let iban = Iban::parse(original).expect("iban is valid");
         let bban = iban.bban();
         assert_eq!(&iban[4..], bban.as_ref());
 
