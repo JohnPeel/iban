@@ -64,33 +64,16 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly
           profile: minimal
-          override: true
-          components: llvm-tools-preview
-      - run: |
-          release_url="$(curl \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/mozilla/grcov/releases | \
-            jq -r '.[0].assets | map(select(.browser_download_url | test(".*x86_64-unknown-linux-musl.tar.bz2$"))) | .[0].browser_download_url')"
-
-          curl -sL "$release_url" | sudo tar xvj -C /usr/local/bin/
-      - run: cargo clean
-      - run: cargo test --all-features --no-fail-fast
-        env:
-          CARGO_INCREMENTAL: "0"
-          RUSTFLAGS: "-C instrument-coverage -C codegen-units=1"
-          RUSTDOCFLAGS: "-C instrument-coverage -C codegen-units=1 -Z unstable-options --persist-doctests target/debug/doctests"
-          LLVM_PROFILE_FILE: "target/coverage/raw/cargo-test-%p-%m.profraw"
-      - run: grcov target/coverage/raw --source-dir . --binary-path target/debug --keep-only 'src/**/*.rs' --branch --ignore-not-existing -t markdown -o target/coverage/coverage.md
-      - uses: actions/upload-artifact@v3
+      - uses: dtolnay/rust-toolchain@nightly
         with:
-          name: code-coverage
-          path: target/coverage/coverage.md
-      - run: grcov target/coverage/raw --source-dir . --binary-path target/debug --keep-only 'src/**/*.rs' --branch --ignore-not-existing -t lcov -o target/coverage/lcov.info
+          profile: minimal
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - run: cargo llvm-cov --all-features --workspace --codecov --output-path codecov.json
       - uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: target/coverage/lcov.info
+          files: codecov.json
+          fail_ci_if_error: true
