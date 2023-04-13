@@ -26,14 +26,28 @@ const IBAN_MAX_LENGTH: usize = 34;
 /// or [`AsRef`](std::convert::AsRef) implementations.
 ///
 /// See crate level documentation for more information.
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Copy, Eq, PartialEq, Hash)]
 pub struct Iban(ArrayString<IBAN_MAX_LENGTH>);
 
 /// Represents a BBAN.
 ///
 /// Use [`Iban::bban`] to obtain this.
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Copy, Eq, PartialEq, Hash)]
 pub struct Bban(ArrayString<IBAN_MAX_LENGTH>);
+
+impl Clone for Iban {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl Clone for Bban {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 
 impl fmt::Debug for Iban {
     #[inline]
@@ -491,7 +505,8 @@ mod tests {
         assert_eq!(&*iban, original);
         assert_eq!(format!("{:?}", iban), format!("{:?}", original));
 
-        let iban2 = iban;
+        #[allow(clippy::clone_on_copy)]
+        let iban2 = iban.clone();
         assert_eq!(iban, iban2);
     }
 
@@ -532,7 +547,8 @@ mod tests {
         assert_eq!(bban.branch_identifier(), branch);
         assert_eq!(bban.checksum(), checksum);
 
-        let bban2 = bban;
+        #[allow(clippy::clone_on_copy)]
+        let bban2 = bban.clone();
         assert_eq!(bban, bban2);
     }
 }
