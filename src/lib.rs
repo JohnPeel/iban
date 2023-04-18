@@ -15,21 +15,31 @@ const IBAN_MAX_LENGTH: usize = 34;
 
 /// Represents an IBAN.
 ///
-/// Use [`FromStr`](std::str::FromStr) to contruct an Iban.
+/// A valid International Bank Account Number (IBAN) is a bank account number that is internationally
+/// recognized based on its country-specific format. An IBAN is used to facilitate international money
+/// transfers and uniquely identifies the account held by a bank in a particular country. This struct
+/// represents a valid IBAN and satisfies the length defined for that country, has a valid checksum and
+/// has a Basic Bank Account Number (BBAN) format as defined in the IBAN registry.
 ///
-/// A valid IBAN satisfies the length defined for that country, has a valid checksum and has
-/// a BBAN format as defined in the IBAN registry.
+/// # Construction
 ///
-/// Spaced formatting can be obtained from the [`Display`](std::fmt::Display) implementation.
+/// Use [`FromStr`](std::str::FromStr) to construct an `Iban` object from a string. If the provided string
+/// does not meet the requirements of a valid IBAN, an error is returned. Once constructed, the `Iban` object
+/// can be used to retrieve the country code, check digits, and BBAN.
 ///
+/// # Formatting
+///
+/// Spaced formatting of the `Iban` can be obtained from the [`Display`](std::fmt::Display) implementation.
 /// Electronic formatting can be obtained from the [`Debug`](std::fmt::Debug), [`Deref`](std::ops::Deref),
 /// or [`AsRef`](std::convert::AsRef) implementations.
-///
-/// See crate level documentation for more information.
 #[derive(Copy, Eq, PartialEq, Hash)]
 pub struct Iban(ArrayString<IBAN_MAX_LENGTH>);
 
-/// Represents a BBAN.
+/// Represents the Basic Bank Account Number (BBAN) portion of an International Bank Account Number (IBAN).
+///
+/// The Bban struct provides methods to extract the bank identifier, branch identifier, and checksum (if available) from the BBAN.
+///
+/// If the BBAN does not contain a bank identifier, branch identifier or checksum, the respective methods will return None.
 ///
 /// Use [`Iban::bban`] to obtain this.
 #[derive(Copy, Eq, PartialEq, Hash)]
@@ -95,26 +105,26 @@ impl fmt::Display for Bban {
     }
 }
 
-/// An error indicating the IBAN could not be parsed.
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+/// An error that can occur when parsing an IBAN string.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum ParseError {
-    /// The country code of the IBAN are not uppercase ascii letters.
+    /// The country code of the IBAN is not composed of two uppercase ASCII letters.
     CountryCode,
-    /// The check digits of the IBAN are not ascii digits.
+    /// The check digits of the IBAN are not ASCII digits.
     CheckDigit,
-    /// The IBAN contains a non ascii alphanumeric character.
+    /// The IBAN contains a non-ASCII alphanumeric character.
     InvalidCharacter,
-    /// The IBAN is too long to be an IBAN.
+    /// The IBAN is too long to be a valid IBAN.
     TooLong,
     /// The country of this IBAN is unknown.
     ///
     /// If you're sure that it should be known, please open an issue.
     UnknownCountry,
-    /// The IBAN does not match the expected length.
+    /// The length of the IBAN does not match the expected length for the country.
     InvalidLength,
-    /// The BBAN does not match the expected format.
+    /// The format of the BBAN does not match the expected format for the country.
     InvalidBban,
-    /// Calculating the checksum of the IBAN gave and invalid result.
+    /// The calculated checksum of the IBAN is invalid.
     WrongChecksum,
 }
 
@@ -140,6 +150,19 @@ impl std::error::Error for ParseError {}
 impl Deref for Iban {
     type Target = str;
 
+    /// Allows for obtaining a reference to the underlying `Iban` as a `&str`.
+    ///
+    /// This implementation returns the electronic-format representation of a IBAN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iban::Iban;
+    ///
+    /// let iban: Iban = "FR1420041010050500013M02606".parse().unwrap();
+    ///
+    /// assert_eq!(&*iban, "FR1420041010050500013M02606");
+    /// ```
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0[..]
@@ -149,6 +172,20 @@ impl Deref for Iban {
 impl Deref for Bban {
     type Target = str;
 
+    /// Allows for obtaining a reference to the underlying `Bban` as a `&str`.
+    ///
+    /// This implementation returns the electronic-format representation of a BBAN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iban::{Bban, Iban};
+    ///
+    /// let iban: Iban = "FR1420041010050500013M02606".parse().unwrap();
+    /// let bban: Bban = iban.bban();
+    ///
+    /// assert_eq!(&*bban, "20041010050500013M02606");
+    /// ```
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0[4..]
@@ -156,6 +193,19 @@ impl Deref for Bban {
 }
 
 impl AsRef<str> for Iban {
+    /// Allows for obtaining a reference to the underlying `Iban` as a `&str`.
+    ///
+    /// This implementation returns the electronic-format representation of a IBAN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iban::Iban;
+    ///
+    /// let iban: Iban = "FR1420041010050500013M02606".parse().unwrap();
+    ///
+    /// assert_eq!(iban.as_ref(), "FR1420041010050500013M02606");
+    /// ```
     #[inline]
     fn as_ref(&self) -> &str {
         self
@@ -163,6 +213,20 @@ impl AsRef<str> for Iban {
 }
 
 impl AsRef<str> for Bban {
+    /// Allows for obtaining a reference to the underlying `Bban` as a `&str`.
+    ///
+    /// This implementation returns the electronic-format representation of a BBAN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use iban::{Bban, Iban};
+    ///
+    /// let iban: Iban = "FR1420041010050500013M02606".parse().unwrap();
+    /// let bban: Bban = iban.bban();
+    ///
+    /// assert_eq!(bban.as_ref(), "20041010050500013M02606");
+    /// ```
     #[inline]
     fn as_ref(&self) -> &str {
         self
@@ -172,6 +236,11 @@ impl AsRef<str> for Bban {
 impl FromStr for Iban {
     type Err = ParseError;
 
+    /// Parses a string as an IBAN.
+    ///
+    /// This function attempts to parse the given string as an IBAN. If successful, it returns
+    /// an `Iban` instance with the same value as the parsed string. Otherwise, it returns a
+    /// `ParseError` indicating the reason for the failure.
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         let mut iban = ArrayString::<IBAN_MAX_LENGTH>::new();
         let mut characters = value
@@ -270,6 +339,8 @@ impl FromStr for Iban {
 
 impl Iban {
     /// Get the country code of the IBAN.
+    ///
+    /// Returns a string slice containing the two-letter country code at the beginning of the IBAN.
     #[inline]
     #[must_use]
     pub fn country_code(&self) -> &str {
@@ -277,6 +348,8 @@ impl Iban {
     }
 
     /// Get the check digits of the IBAN.
+    ///
+    /// Returns a string slice containing the two check digits immediately following the country code.
     #[inline]
     #[must_use]
     pub fn check_digits(&self) -> &str {
@@ -284,13 +357,17 @@ impl Iban {
     }
 
     /// Get the BBAN of the IBAN.
+    ///
+    /// Returns a `Bban` struct containing the basic bank account number (BBAN) portion of the IBAN.
     #[inline]
     #[must_use]
     pub const fn bban(&self) -> Bban {
         Bban(self.0)
     }
 
-    /// Get the IBAN as a str.
+    /// Get the IBAN as a string slice.
+    ///
+    /// Returns a reference to the underlying string (electronic-format) that represents the IBAN.
     #[inline]
     #[must_use]
     pub fn as_str(&self) -> &str {
@@ -298,6 +375,10 @@ impl Iban {
     }
 
     /// Parse a string as an Iban.
+    ///
+    /// This method attempts to parse a string as an `Iban`. It returns a `Result`
+    /// containing the parsed `Iban` if successful, or a `ParseError` if the string
+    /// could not be parsed as an `Iban`.
     #[inline]
     pub fn parse(s: &str) -> Result<Self, ParseError> {
         FromStr::from_str(s)
@@ -305,6 +386,12 @@ impl Iban {
 }
 
 impl Bban {
+    /// Get the country code of the BBAN.
+    ///
+    /// Returns a string slice containing the two-letter country code of the BBAN.
+    ///
+    /// As `Bban` can only be constructed from a valid `Iban`,
+    /// this should always be a valid country code.
     #[inline]
     #[must_use]
     fn country_code(&self) -> &str {
@@ -312,6 +399,10 @@ impl Bban {
     }
 
     /// Get the bank identifier of the BBAN (if it has one).
+    ///
+    /// Returns an `Option` containing a string slice representing the bank identifier,
+    /// or `None` if the BBAN does not have a bank identifier. The bank identifier's position
+    /// and length are determined by the country's IBAN specification.
     #[inline]
     #[must_use]
     pub fn bank_identifier(&self) -> Option<&str> {
@@ -324,6 +415,10 @@ impl Bban {
     }
 
     /// Get the branch identifier of the BBAN (if it has one).
+    ///
+    /// Returns an `Option` containing a string slice representing the branch identifier,
+    /// or `None` if the BBAN does not have a branch identifier. The branch identifier's position
+    /// and length are determined by the country's IBAN specification.
     #[inline]
     #[must_use]
     pub fn branch_identifier(&self) -> Option<&str> {
@@ -336,6 +431,10 @@ impl Bban {
     }
 
     /// Get the checksum of the BBAN (if it has one).
+    ///
+    /// Returns an `Option` containing a string slice representing the checksum,
+    /// or `None` if the BBAN does not have a checksum. The checksum's position
+    /// and length are determined by the country's IBAN specification.
     #[inline]
     #[must_use]
     pub fn checksum(&self) -> Option<&str> {
@@ -347,7 +446,9 @@ impl Bban {
             .map(|(start, end)| &self[start..end])
     }
 
-    /// Get the BBAN as a str.
+    /// Get the BBAN as a string slice.
+    ///
+    /// Returns a reference to the underlying string (electronic-format) that represents the BBAN.
     #[inline]
     #[must_use]
     pub fn as_str(&self) -> &str {
