@@ -1,5 +1,5 @@
 #![doc = include_str!("../README.md")]
-#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(not(any(feature = "std", test)), no_std)]
 #![warn(missing_docs)]
 
 use core::{fmt, ops::Deref, str::FromStr};
@@ -7,7 +7,7 @@ use core::{fmt, ops::Deref, str::FromStr};
 use arrayvec::ArrayString;
 
 mod util;
-use util::{chunk_str, digits};
+use util::{ChunksExt as _, IteratorExt as _, digits};
 
 include!(concat!(env!("OUT_DIR"), "/countries.rs"));
 
@@ -60,15 +60,10 @@ impl fmt::Debug for Bban {
 }
 
 impl fmt::Display for Iban {
+    /// Spaced formatting of the `Iban`.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut iter = chunk_str(self, 4).peekable();
-
-        while let Some(chunk) = iter.next() {
+        for chunk in self.as_ref().chunks::<4>().delimited(" ") {
             write!(f, "{chunk}")?;
-
-            if iter.peek().is_some() {
-                write!(f, " ")?;
-            }
         }
 
         Ok(())
@@ -76,15 +71,10 @@ impl fmt::Display for Iban {
 }
 
 impl fmt::Display for Bban {
+    /// Spaced formatting of the `Bban`.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut iter = chunk_str(self, 4).peekable();
-
-        while let Some(chunk) = iter.next() {
+        for chunk in self.as_ref().chunks::<4>().delimited(" ") {
             write!(f, "{chunk}")?;
-
-            if iter.peek().is_some() {
-                write!(f, " ")?;
-            }
         }
 
         Ok(())
