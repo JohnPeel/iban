@@ -7,7 +7,7 @@ use core::{fmt, ops::Deref, str::FromStr};
 use arrayvec::ArrayString;
 
 mod util;
-use util::{ChunksExt as _, IteratorExt as _, digits};
+use util::{digits, ChunksExt as _, IteratorExt as _};
 
 include!(concat!(env!("OUT_DIR"), "/countries.rs"));
 

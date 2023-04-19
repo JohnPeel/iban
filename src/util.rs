@@ -1,6 +1,7 @@
 use core::iter::Peekable;
 
 pub trait IteratorExt: Iterator + Sized {
+    #[inline]
     fn ensure_one(self, value: Self::Item) -> EnsureOne<Self> {
         EnsureOne {
             iter: self,
@@ -8,11 +9,12 @@ pub trait IteratorExt: Iterator + Sized {
         }
     }
 
+    #[inline]
     fn delimited(self, value: Self::Item) -> Delimited<Self> {
         Delimited {
             separator: value,
             iter: self.peekable(),
-            needs_separator: false
+            needs_separator: false,
         }
     }
 }
