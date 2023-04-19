@@ -314,13 +314,10 @@ impl FromStr for Iban {
             return Err(ParseError::InvalidLength);
         }
 
-        let iban = Self(iban);
-
-        let checksum = iban
-            .bban()
-            .bytes()
-            .chain(iban.country_code().bytes())
-            .chain(iban.check_digits().bytes())
+        let iban_bytes = iban.as_bytes();
+        let checksum = iban_bytes[4..]
+            .iter()
+            .chain(iban_bytes[..4].iter())
             .flat_map(|character| match character {
                 b'0'..=b'9' => digits(character - b'0'),
                 b'a'..=b'z' => digits(character - b'a' + 10),
@@ -338,14 +335,13 @@ impl FromStr for Iban {
                 } else {
                     checksum
                 }
-            })
-            % 97;
+            });
 
-        if checksum != 1 {
+        if checksum % 97 != 1 {
             return Err(ParseError::WrongChecksum);
         }
 
-        Ok(iban)
+        Ok(Self(iban))
     }
 }
 
