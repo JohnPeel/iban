@@ -133,8 +133,6 @@ pub enum ParseError {
     CheckDigit,
     /// The IBAN contains a non-ASCII alphanumeric character.
     InvalidCharacter,
-    /// The IBAN is too long to be a valid IBAN.
-    TooLong,
     /// The country of this IBAN is unknown.
     ///
     /// If you're sure that it should be known, please open an issue.
@@ -153,7 +151,6 @@ impl fmt::Display for ParseError {
             Self::CountryCode => "invalid country code",
             Self::CheckDigit => "invalid check digit",
             Self::InvalidCharacter => "invalid character",
-            Self::TooLong => "too long",
             Self::UnknownCountry => "unknown country",
             Self::InvalidLength => "invalid length",
             Self::InvalidBban => "invalid bban",
@@ -266,12 +263,12 @@ impl FromStr for Iban {
             .as_bytes()
             .iter()
             .copied()
-            .filter(|byte| !byte.is_ascii_whitespace());
+            .filter(|byte| !byte.is_ascii_whitespace())
+            .map(|b| b.to_ascii_uppercase());
 
         for _ in 0..2 {
             let ch = characters
                 .next()
-                .map(|b| b.to_ascii_uppercase())
                 // SAFETY: This condition is tied with an unsafe block below.
                 .filter(u8::is_ascii_uppercase)
                 .ok_or(ParseError::CountryCode)?;
@@ -287,36 +284,37 @@ impl FromStr for Iban {
             iban.push(char::from(ch));
         }
 
+        let country_code = &iban[..2];
+        let &(expected_length, validation, ..) = COUNTRIES
+            .get(country_code)
+            .ok_or(ParseError::UnknownCountry)?;
+
+        let mut validation = validation
+            .iter()
+            .flat_map(|(count, character_type)| (0..*count).map(move |_| character_type))
+            .skip(4)
+            .copied();
+
         for ch in characters {
             // SAFETY: This condition is tied with an unsafe block below.
             if !ch.is_ascii_alphanumeric() {
                 return Err(ParseError::InvalidCharacter);
             }
 
+            let character_type = validation.next().ok_or(ParseError::InvalidLength)?;
+            if !character_type.contains(ch) {
+                return Err(ParseError::InvalidBban);
+            }
+
             iban.try_push(char::from(ch))
-                .map_err(|_| ParseError::TooLong)?;
+                .map_err(|_| ParseError::InvalidLength)?;
         }
-
-        let iban = Self(iban);
-
-        let country_code = iban.country_code();
-        let &(expected_length, validation, ..) = COUNTRIES
-            .get(country_code)
-            .ok_or(ParseError::UnknownCountry)?;
 
         if expected_length != iban.len() {
             return Err(ParseError::InvalidLength);
         }
 
-        let valid = validation
-            .iter()
-            .flat_map(|(count, character_type)| (0..*count).map(move |_| character_type))
-            .zip(iban.as_bytes())
-            .all(|(character_type, &character)| character_type.contains(character));
-
-        if !valid {
-            return Err(ParseError::InvalidBban);
-        }
+        let iban = Self(iban);
 
         let checksum = iban
             .bban()
@@ -680,7 +678,7 @@ mod tests {
     #[test_case("1T4120041010050500013M02606", ParseError::CountryCode; "country code")]
     #[test_case("YTa120041010050500013M02606", ParseError::CheckDigit; "check digit")]
     #[test_case("YT412*041010050500013M02606", ParseError::InvalidCharacter; "invalid character")]
-    #[test_case("SC18SSCB11010000000000001497USDABCD", ParseError::TooLong; "too long")]
+    #[test_case("SC18SSCB11010000000000001497USDABCD", ParseError::InvalidLength; "too long")]
     #[test_case("ZZ18SSCB11010000000000001497USD", ParseError::UnknownCountry; "unknown country")]
     #[test_case("AA110011123Z567891238", ParseError::InvalidLength; "invalid length")]
     #[test_case("YT4120041010050500013M02606", ParseError::WrongChecksum; "wrong checksum")]
