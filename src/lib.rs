@@ -32,7 +32,7 @@ const IBAN_MAX_LENGTH: usize = 34;
 /// Spaced formatting of the `Iban` can be obtained from the [`Display`](std::fmt::Display) implementation.
 /// Electronic formatting can be obtained from the [`Debug`](std::fmt::Debug), [`Deref`](std::ops::Deref),
 /// or [`AsRef`](std::convert::AsRef) implementations.
-#[derive(Copy, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Iban(ArrayString<IBAN_MAX_LENGTH>);
 
 /// Represents the Basic Bank Account Number (BBAN) portion of an International Bank Account Number (IBAN).
@@ -42,22 +42,8 @@ pub struct Iban(ArrayString<IBAN_MAX_LENGTH>);
 /// If the BBAN does not contain a bank identifier, branch identifier or checksum, the respective methods will return None.
 ///
 /// Use [`Iban::bban`] to obtain this.
-#[derive(Copy, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Bban(ArrayString<IBAN_MAX_LENGTH>);
-
-impl Clone for Iban {
-    #[inline(always)]
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl Clone for Bban {
-    #[inline(always)]
-    fn clone(&self) -> Self {
-        *self
-    }
-}
 
 impl fmt::Debug for Iban {
     #[inline]
@@ -105,10 +91,43 @@ impl fmt::Display for Bban {
     }
 }
 
+/// Represents the type of a character in an IBAN.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CharacterType {
+    /// Digits (numeric characters 0 to 9 only)
+    N,
+    /// Upper case letters (alphabetic characters A-Z only)
+    A,
+    /// Upper and lower case alphanumeric characters (A-Z, a-z and 0-9)
+    C,
+
+    /// Upper case alphanemeric characters (A-Z and 0-9)
+    ///
+    /// Only used in IIBANs, as they are strict on casing.
+    I,
+    /// Specific character
+    ///
+    /// This is used for the country code.
+    S(u8),
+}
+
+impl CharacterType {
+    /// Returns true if `ch` is a member of the character type `self`.
+    pub const fn contains(self, ch: u8) -> bool {
+        match self {
+            CharacterType::N => ch.is_ascii_digit(),
+            CharacterType::A => ch.is_ascii_uppercase(),
+            CharacterType::C => ch.is_ascii_alphanumeric(),
+            CharacterType::I => ch.is_ascii_uppercase() || ch.is_ascii_digit(),
+            CharacterType::S(expected) => ch == expected,
+        }
+    }
+}
+
 /// An error that can occur when parsing an IBAN string.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum ParseError {
-    /// The country code of the IBAN is not composed of two uppercase ASCII letters.
+    /// The country code of the IBAN is not composed of two ASCII letters.
     CountryCode,
     /// The check digits of the IBAN are not ASCII digits.
     CheckDigit,
@@ -240,7 +259,7 @@ impl FromStr for Iban {
     ///
     /// This function attempts to parse the given string as an IBAN. If successful, it returns
     /// an `Iban` instance with the same value as the parsed string. Otherwise, it returns a
-    /// `ParseError` indicating the reason for the failure.
+    /// [`ParseError`] indicating the reason for the failure.
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         let mut iban = ArrayString::<IBAN_MAX_LENGTH>::new();
         let mut characters = value
@@ -252,6 +271,7 @@ impl FromStr for Iban {
         for _ in 0..2 {
             let ch = characters
                 .next()
+                .map(|b| b.to_ascii_uppercase())
                 // SAFETY: This condition is tied with an unsafe block below.
                 .filter(u8::is_ascii_uppercase)
                 .ok_or(ParseError::CountryCode)?;
@@ -292,13 +312,7 @@ impl FromStr for Iban {
             .iter()
             .flat_map(|(count, character_type)| (0..*count).map(move |_| character_type))
             .zip(iban.as_bytes())
-            .all(|(character_type, character)| match character_type {
-                'n' => character.is_ascii_digit(),
-                'a' => character.is_ascii_uppercase(),
-                'i' => character.is_ascii_uppercase() || character.is_ascii_digit(),
-                'c' => character.is_ascii_alphanumeric(),
-                expected => char::from(*character) == *expected,
-            });
+            .all(|(character_type, &character)| character_type.contains(character));
 
         if !valid {
             return Err(ParseError::InvalidBban);
@@ -377,8 +391,19 @@ impl Iban {
     /// Parse a string as an Iban.
     ///
     /// This method attempts to parse a string as an `Iban`. It returns a `Result`
-    /// containing the parsed `Iban` if successful, or a `ParseError` if the string
+    /// containing the parsed `Iban` if successful, or a [`ParseError`] if the string
     /// could not be parsed as an `Iban`.
+    ///
+    /// # Errors
+    /// This method returns a `ParseError` for any of the following issues:
+    /// * Country code format issues (see: `ParseError::CountryCode`)
+    /// * Check digit format issues (see: `ParseError::CheckDigit`)
+    /// * Invalid characters (see: `ParseError::InvalidCharacter`)
+    /// * Over maximum IBAN length (see: `ParseError::TooLong`)
+    /// * Unknown country (see: `ParseError::UnknownCountry`)
+    /// * Invalid length (see: `ParseError::InvalidLength`)
+    /// * Invalid BBAN format (see: `ParseError::InvalidBban`)
+    /// * Checksum is wrong (see: `ParseError::WrongChecksum`)
     #[inline]
     pub fn parse(s: &str) -> Result<Self, ParseError> {
         FromStr::from_str(s)
@@ -390,7 +415,7 @@ impl Bban {
     ///
     /// Returns a string slice containing the two-letter country code of the BBAN.
     ///
-    /// As `Bban` can only be constructed from a valid `Iban`,
+    /// As `Bban` can only be constructed from a valid [`Iban`],
     /// this should always be a valid country code.
     #[inline]
     #[must_use]
@@ -652,7 +677,7 @@ mod tests {
         is_asref_str(&iban);
     }
 
-    #[test_case("aT4120041010050500013M02606", ParseError::CountryCode; "country code")]
+    #[test_case("1T4120041010050500013M02606", ParseError::CountryCode; "country code")]
     #[test_case("YTa120041010050500013M02606", ParseError::CheckDigit; "check digit")]
     #[test_case("YT412*041010050500013M02606", ParseError::InvalidCharacter; "invalid character")]
     #[test_case("SC18SSCB11010000000000001497USDABCD", ParseError::TooLong; "too long")]

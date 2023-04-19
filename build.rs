@@ -1,6 +1,6 @@
 use std::{env, path::PathBuf};
 
-use quote::quote;
+use quote::{format_ident, quote};
 use regex::Regex;
 
 #[derive(Debug, serde::Deserialize)]
@@ -67,15 +67,22 @@ fn main() {
                     .map(|captures| {
                         (
                             captures[1].parse::<usize>().unwrap(),
-                            captures[2].parse::<char>().unwrap(),
+                            format_ident!(
+                                "{}",
+                                captures[2]
+                                    .parse::<char>()
+                                    .unwrap()
+                                    .to_ascii_uppercase()
+                                    .to_string()
+                            ),
                         )
                     })
-                    .map(|(len, char)| quote! { (#len, #char) });
+                    .map(|(len, char)| quote! { (#len, CharacterType::#char) });
                 let captures = iban_format_swift[..2]
                     .as_bytes()
                     .iter()
-                    .map(|byte| (1usize, char::from(*byte)))
-                    .map(|(len, char)| quote! { (#len, #char) })
+                    .map(|byte| (1usize, byte.to_ascii_uppercase()))
+                    .map(|(len, char)| quote! { (#len, CharacterType::S(#char)) })
                     .chain(captures);
 
                 let bankid_offset = if let (Some(start), Some(end)) =
@@ -128,7 +135,7 @@ fn main() {
     std::fs::write(
         out_path.join("countries.rs"),
         format!(
-            "#[allow(clippy::type_complexity, clippy::unreadable_literal, clippy::identity_op)]\nstatic COUNTRIES: ::phf::Map<&'static str, (usize, &'static [(usize, char)], Option<(usize, usize)>, Option<(usize, usize)>, Option<(usize, usize)>)> = {countries};\n",
+            "#[allow(clippy::type_complexity, clippy::unreadable_literal, clippy::identity_op)]\nstatic COUNTRIES: ::phf::Map<&'static str, (usize, &'static [(usize, CharacterType)], Option<(usize, usize)>, Option<(usize, usize)>, Option<(usize, usize)>)> = {countries};\n",
         ),
     )
     .expect("failed to write countries file");
