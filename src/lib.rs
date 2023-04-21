@@ -300,6 +300,10 @@ impl FromStr for Iban {
                 .map_err(|_| ParseError::InvalidLength)?;
         }
 
+        if validation.next().is_some() {
+            return Err(ParseError::InvalidLength);
+        }
+
         if expected_length != iban.len() {
             return Err(ParseError::InvalidLength);
         }
