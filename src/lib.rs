@@ -7,6 +7,7 @@ use core::{fmt, ops::Deref, str::FromStr};
 use arrayvec::ArrayString;
 
 mod util;
+use rand::Rng;
 use util::{digits, ChunksExt as _, IteratorExt as _};
 
 include!(concat!(env!("OUT_DIR"), "/countries.rs"));
@@ -110,6 +111,35 @@ impl CharacterType {
             CharacterType::C => ch.is_ascii_alphanumeric(),
             CharacterType::I => ch.is_ascii_uppercase() || ch.is_ascii_digit(),
             CharacterType::S(expected) => ch == expected,
+        }
+    }
+
+    /// Returns a random member of the character type `self`.
+    pub fn rand<R: ?Sized + Rng>(self, rng: &mut R) -> u8 {
+        match self {
+            CharacterType::N => rng.gen_range(b'0'..=b'9'),
+            CharacterType::A => rng.gen_range(b'A'..=b'Z'),
+            CharacterType::C => {
+                let r = rng.gen_range(0..62);
+
+                if r < 10 {
+                    b'0' + r
+                } else if r < 36 {
+                    b'A' + r - 10
+                } else {
+                    b'a' + r - 36
+                }
+            }
+            CharacterType::I => {
+                let r = rng.gen_range(0..36);
+
+                if r < 10 {
+                    b'0' + r
+                } else {
+                    b'A' + r - 10
+                }
+            }
+            CharacterType::S(expected) => expected,
         }
     }
 }
@@ -370,6 +400,58 @@ impl Iban {
     pub fn parse(s: &str) -> Result<Self, ParseError> {
         FromStr::from_str(s)
     }
+
+    /// Generates a random IBAN for the specified `country_code` using the given `rng`.
+    ///
+    /// # Returns
+    /// If successful, returns an `Iban` instance representing the generated IBAN.
+    ///
+    /// # Errors
+    /// Returns a `ParseError` if the specified `country_code` is invalid or unknown.
+    pub fn rand<R: ?Sized + Rng>(country_code: &str, rng: &mut R) -> Result<Self, ParseError> {
+        if !country_code.chars().all(|ch| ch.is_ascii_alphabetic()) {
+            return Err(ParseError::CountryCode);
+        }
+
+        let mut iban = ArrayString::<IBAN_MAX_LENGTH>::new();
+        iban.push_str(&country_code.to_ascii_uppercase());
+
+        if iban.len() != 2 {
+            return Err(ParseError::UnknownCountry);
+        }
+
+        iban.push_str("00");
+
+        let &(expected_length, validation, ..) = COUNTRIES
+            .get(&iban[..2])
+            .ok_or(ParseError::UnknownCountry)?;
+
+        let bban_chars = validation
+            .iter()
+            .flat_map(|(count, character_type)| (0..*count).map(move |_| character_type))
+            .skip(4)
+            .map(|character_type| char::from(character_type.rand(rng)));
+
+        for character in bban_chars {
+            iban.try_push(character)
+                .map_err(|_| ParseError::InvalidLength)?;
+        }
+
+        debug_assert_eq!(iban.len(), expected_length);
+
+        let check_digits = 98 - calculate_checksum(iban.as_bytes());
+        #[allow(clippy::cast_possible_truncation)]
+        let check_digits = [
+            b'0' + (check_digits / 10) as u8,
+            b'0' + (check_digits % 10) as u8,
+        ];
+
+        // TODO: Figure out a way to swap out the characters without unsafe.
+        // SAFETY: All of the characters generated are ASCII, so there are no issues with character boundries.
+        unsafe { &mut iban.as_bytes_mut()[2..4] }.copy_from_slice(&check_digits);
+
+        Ok(Self(iban))
+    }
 }
 
 impl Bban {
@@ -497,6 +579,7 @@ pub fn calculate_checksum(iban: &[u8]) -> u32 {
 mod tests {
     use core::{convert, fmt, ops};
 
+    use rand::SeedableRng;
     use test_case::test_case;
 
     use crate::{digits, Iban, ParseError};
@@ -733,5 +816,21 @@ mod tests {
         is_display(&bban);
         is_deref_str(&bban);
         is_asref_str(&bban);
+    }
+
+    #[test]
+    fn random_iban() {
+        let mut rng = rand::rngs::StdRng::from_seed([0; 32]);
+        let iban = Iban::rand("GB", &mut rng).expect("generates random (seeded) iban");
+
+        assert_eq!(&*iban, "GB82KIBV70634724101729");
+
+        assert_eq!(iban.country_code(), "GB");
+        assert_eq!(iban.check_digits(), "82");
+
+        let bban = iban.bban();
+        assert_eq!(bban.bank_identifier(), Some("KIBV"));
+        assert_eq!(bban.branch_identifier(), Some("706347"));
+        assert_eq!(bban.checksum(), None);
     }
 }
