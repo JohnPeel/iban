@@ -259,7 +259,6 @@ impl FromStr for Iban {
         for _ in 0..2 {
             let ch = characters
                 .next()
-                // SAFETY: This condition is tied with an unsafe block below.
                 .filter(u8::is_ascii_uppercase)
                 .ok_or(ParseError::CountryCode)?;
             iban.push(char::from(ch));
@@ -268,7 +267,6 @@ impl FromStr for Iban {
         for _ in 0..2 {
             let ch = characters
                 .next()
-                // SAFETY: This condition is tied with an unsafe block below.
                 .filter(u8::is_ascii_digit)
                 .ok_or(ParseError::CheckDigit)?;
             iban.push(char::from(ch));
@@ -286,7 +284,6 @@ impl FromStr for Iban {
             .copied();
 
         for ch in characters {
-            // SAFETY: This condition is tied with an unsafe block below.
             if !ch.is_ascii_alphanumeric() {
                 return Err(ParseError::InvalidCharacter);
             }
@@ -308,30 +305,7 @@ impl FromStr for Iban {
             return Err(ParseError::InvalidLength);
         }
 
-        let iban_bytes = iban.as_bytes();
-        let checksum = iban_bytes[4..]
-            .iter()
-            .chain(iban_bytes[..4].iter())
-            .flat_map(|character| match character {
-                b'0'..=b'9' => digits(character - b'0'),
-                b'a'..=b'z' => digits(character - b'a' + 10),
-                b'A'..=b'Z' => digits(character - b'A' + 10),
-                // SAFETY: Any characters that are not alphanumeric would have errored before the checksum validation.
-                // * Country code must be uppercased ascii letters.
-                // * Check digits must be ascii numbers.
-                // * BBAN must be ascii alphanumeric.
-                _ => unsafe { core::hint::unreachable_unchecked() },
-            })
-            .fold(0u32, |checksum, item| {
-                let checksum = checksum * 10 + u32::from(item);
-                if checksum > 9_999_999 {
-                    checksum % 97
-                } else {
-                    checksum
-                }
-            });
-
-        if checksum % 97 != 1 {
+        if calculate_checksum(iban.as_bytes()) != 1 {
             return Err(ParseError::WrongChecksum);
         }
 
@@ -467,6 +441,56 @@ impl Bban {
     pub fn as_str(&self) -> &str {
         self
     }
+}
+
+/// Calculates the checksum of an IBAN.
+///
+/// This function takes a valid IBAN string as input and returns the calculated
+/// checksum as an unsigned 32-bit integer. The checksum is calculated by converting
+/// the letters in the IBAN to digits, and then performing a series of modulus operations
+/// on the resulting number.
+///
+/// Non-ASCII alphanumeric characters in the input will be ignored.
+///
+/// You can also use this method to generate the check digits for an IBAN.
+/// Set the check digits to "00", then calculate the checksum and subtract that result from 98.
+///
+/// ```rust
+/// use iban::Iban;
+///
+/// let original_iban   = "GB29NWBK60161331926819";
+/// let zeroed_iban     = format!("{}00{}", &original_iban[..2], &original_iban[4..]);
+///
+/// let check_digits = 98 - iban::calculate_checksum(zeroed_iban.as_bytes());
+///
+/// assert_eq!(check_digits, 29);
+///
+/// let calculated_iban = format!("{}{:02}{}", &original_iban[..2], check_digits, &original_iban[4..]);
+///
+/// assert_eq!(original_iban, calculated_iban);
+/// ```
+pub fn calculate_checksum(iban: &[u8]) -> u32 {
+    iban[4..]
+        .iter()
+        .chain(iban[..4].iter())
+        .map(u8::to_ascii_uppercase)
+        .filter(u8::is_ascii_alphanumeric)
+        .flat_map(|byte| {
+            if byte.is_ascii_digit() {
+                digits(byte - b'0')
+            } else {
+                digits(byte - b'A' + 10)
+            }
+        })
+        .fold(0u32, |checksum, byte| {
+            let checksum = checksum * 10 + u32::from(byte);
+            if checksum > 9_999_999 {
+                checksum % 97
+            } else {
+                checksum
+            }
+        })
+        % 97
 }
 
 #[cfg(test)]
