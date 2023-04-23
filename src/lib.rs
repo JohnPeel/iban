@@ -409,14 +409,18 @@ impl Iban {
     /// # Errors
     /// Returns a `ParseError` if the specified `country_code` is invalid or unknown.
     pub fn rand<R: ?Sized + Rng>(country_code: &str, rng: &mut R) -> Result<Self, ParseError> {
-        if !country_code.chars().all(|ch| ch.is_ascii_alphabetic()) {
-            return Err(ParseError::CountryCode);
+        let mut iban = ArrayString::<IBAN_MAX_LENGTH>::new();
+        let mut country_code = country_code.as_bytes().iter().map(u8::to_ascii_uppercase);
+
+        for _ in 0..2 {
+            let ch = country_code
+                .next()
+                .filter(u8::is_ascii_uppercase)
+                .ok_or(ParseError::CountryCode)?;
+            iban.push(char::from(ch));
         }
 
-        let mut iban = ArrayString::<IBAN_MAX_LENGTH>::new();
-        iban.push_str(&country_code.to_ascii_uppercase());
-
-        if iban.len() != 2 {
+        if country_code.next().is_some() || iban.len() != 2 {
             return Err(ParseError::UnknownCountry);
         }
 
