@@ -11,11 +11,12 @@ rust-version = "1.60.0"
 [features]
 default = ["std"]
 std = []
+rand = ["dep:rand"]
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
 phf = { version = "0.11", default-features = false }
-rand = { version = "0.8", default-features = false }
+rand = { version = "0.8", default-features = false, optional = true }
 
 [build-dependencies]
 csv = "1"

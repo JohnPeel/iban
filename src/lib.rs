@@ -7,7 +7,6 @@ use core::{fmt, ops::Deref, str::FromStr};
 use arrayvec::ArrayString;
 
 mod util;
-use rand::Rng;
 use util::{digits, ChunksExt as _, IteratorExt as _};
 
 include!(concat!(env!("OUT_DIR"), "/countries.rs"));
@@ -115,7 +114,8 @@ impl CharacterType {
     }
 
     /// Returns a random member of the character type `self`.
-    pub fn rand<R: ?Sized + Rng>(self, rng: &mut R) -> u8 {
+    #[cfg(feature = "rand")]
+    pub fn rand<R: ?Sized + rand::Rng>(self, rng: &mut R) -> u8 {
         match self {
             CharacterType::N => rng.gen_range(b'0'..=b'9'),
             CharacterType::A => rng.gen_range(b'A'..=b'Z'),
@@ -408,7 +408,11 @@ impl Iban {
     ///
     /// # Errors
     /// Returns a `ParseError` if the specified `country_code` is invalid or unknown.
-    pub fn rand<R: ?Sized + Rng>(country_code: &str, rng: &mut R) -> Result<Self, ParseError> {
+    #[cfg(feature = "rand")]
+    pub fn rand<R: ?Sized + rand::Rng>(
+        country_code: &str,
+        rng: &mut R,
+    ) -> Result<Self, ParseError> {
         let mut iban = ArrayString::<IBAN_MAX_LENGTH>::new();
         let mut country_code = country_code.as_bytes().iter().map(u8::to_ascii_uppercase);
 
@@ -583,7 +587,6 @@ pub fn calculate_checksum(iban: &[u8]) -> u32 {
 mod tests {
     use core::{convert, fmt, ops};
 
-    use rand::SeedableRng;
     use test_case::test_case;
 
     use crate::{digits, Iban, ParseError};
@@ -822,8 +825,11 @@ mod tests {
         is_asref_str(&bban);
     }
 
+    #[cfg(feature = "rand")]
     #[test]
     fn random_iban() {
+        use rand::SeedableRng;
+
         let mut rng = rand::rngs::StdRng::from_seed([0; 32]);
         let iban = Iban::rand("GB", &mut rng).expect("generates random (seeded) iban");
 
