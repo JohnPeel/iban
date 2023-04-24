@@ -844,4 +844,17 @@ mod tests {
         assert_eq!(bban.branch_identifier(), Some("706347"));
         assert_eq!(bban.checksum(), None);
     }
+
+    #[cfg(feature = "rand")]
+    #[test]
+    fn random_all_countries() {
+        use rand::SeedableRng;
+        let mut rng = rand::rngs::StdRng::from_seed([0; 32]);
+
+        // Test that we can construct a random iban for every country
+        // we support.
+        for country in crate::COUNTRIES.keys() {
+            let _ = Iban::rand(country, &mut rng);
+        }
+    }
 }
