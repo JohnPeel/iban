@@ -106,3 +106,23 @@ pub fn digits(mut value: u8) -> impl Iterator<Item = u8> {
         // Ensure at least one value (0) is provided by this iterator.
         .ensure_one(0)
 }
+
+/// Converts an `ArrayVec<u8>` to an `ArrayString`.
+///
+/// # Panics
+///
+/// This method panics on any `u8` that isn't ASCII.
+#[cfg(feature = "rand")]
+#[inline]
+pub fn array_vec_to_string<const CAP: usize>(
+    value: arrayvec::ArrayVec<u8, CAP>,
+) -> arrayvec::ArrayString<CAP> {
+    let mut ret = arrayvec::ArrayString::new();
+    for item in value {
+        if !item.is_ascii() {
+            panic!("`{item}` is not an ASCII character.");
+        }
+        ret.push(char::from(item));
+    }
+    ret
+}

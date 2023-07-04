@@ -291,16 +291,18 @@ impl FromStr for Iban {
             let ch = characters
                 .next()
                 .filter(u8::is_ascii_uppercase)
+                .map(char::from)
                 .ok_or(ParseError::CountryCode)?;
-            iban.push(char::from(ch));
+            iban.push(ch);
         }
 
         for _ in 0..2 {
             let ch = characters
                 .next()
                 .filter(u8::is_ascii_digit)
+                .map(char::from)
                 .ok_or(ParseError::CheckDigit)?;
-            iban.push(char::from(ch));
+            iban.push(ch);
         }
 
         let country_code = &iban[..2];
@@ -328,11 +330,7 @@ impl FromStr for Iban {
                 .map_err(|_| ParseError::InvalidLength)?;
         }
 
-        if validation.next().is_some() {
-            return Err(ParseError::InvalidLength);
-        }
-
-        if expected_length != iban.len() {
+        if validation.next().is_some() || expected_length != iban.len() {
             return Err(ParseError::InvalidLength);
         }
 
@@ -414,52 +412,40 @@ impl Iban {
         country_code: &str,
         rng: &mut R,
     ) -> Result<Self, ParseError> {
-        let mut iban = ArrayString::<IBAN_MAX_LENGTH>::new();
-        let mut country_code = country_code.as_bytes().iter().map(u8::to_ascii_uppercase);
+        use arrayvec::ArrayVec;
 
-        for _ in 0..2 {
-            let ch = country_code
-                .next()
-                .filter(u8::is_ascii_uppercase)
-                .ok_or(ParseError::CountryCode)?;
-            iban.push(char::from(ch));
-        }
+        use crate::util::array_vec_to_string;
 
-        if country_code.next().is_some() || iban.len() != 2 {
-            return Err(ParseError::UnknownCountry);
-        }
-
-        iban.push_str("00");
+        let mut country_code =
+            ArrayString::<2>::from_str(country_code).map_err(|_| ParseError::CountryCode)?;
+        country_code.make_ascii_uppercase();
 
         let &(expected_length, validation, ..) = COUNTRIES
-            .get(&iban[..2])
+            .get(&country_code)
             .ok_or(ParseError::UnknownCountry)?;
 
-        let bban_chars = validation
-            .iter()
-            .flat_map(|(count, character_type)| (0..*count).map(move |_| character_type))
-            .skip(4)
-            .map(|character_type| char::from(character_type.rand(rng)));
-
-        for character in bban_chars {
-            iban.try_push(character)
-                .map_err(|_| ParseError::InvalidLength)?;
-        }
+        let mut iban = ArrayVec::<u8, IBAN_MAX_LENGTH>::new();
+        iban.extend(country_code.as_bytes().iter().copied());
+        iban.extend(b"00".iter().copied());
+        iban.extend(
+            validation
+                .iter()
+                .flat_map(|(count, character_type)| (0..*count).map(move |_| character_type))
+                .skip(4)
+                .map(|character_type| character_type.rand(rng).to_ascii_uppercase()),
+        );
 
         debug_assert_eq!(iban.len(), expected_length);
 
-        let check_digits = 98 - calculate_checksum(iban.as_bytes());
-        #[allow(clippy::cast_possible_truncation)]
-        let check_digits = [
-            b'0' + (check_digits / 10) as u8,
-            b'0' + (check_digits % 10) as u8,
-        ];
+        let check_digits = 98 - calculate_checksum(&iban);
+        // check_digits is between 2..98, as such dividing by 10 will always give only a single digit.
+        iban[2..4].copy_from_slice(&[
+            b'0' + ((check_digits / 10) & 0xFF) as u8,
+            b'0' + ((check_digits % 10) & 0xFF) as u8,
+        ]);
 
-        // TODO: Figure out a way to swap out the characters without unsafe.
-        // SAFETY: All of the characters generated are ASCII, so there are no issues with character boundries.
-        unsafe { &mut iban.as_bytes_mut()[2..4] }.copy_from_slice(&check_digits);
-
-        Ok(Self(iban))
+        // All characters of iban are ASCII, and as a subset of UTF-8 should always be valid in an ArrayString.
+        Ok(Self(array_vec_to_string(iban)))
     }
 }
 
@@ -854,7 +840,11 @@ mod tests {
         // Test that we can construct a random iban for every country
         // we support.
         for country in crate::COUNTRIES.keys() {
-            let _ = Iban::rand(country, &mut rng);
+            let rand_iban = Iban::rand(country, &mut rng).expect("generated iban");
+
+            let parsed_iban = Iban::parse(&rand_iban).expect("iban parses");
+
+            assert_eq!(rand_iban, parsed_iban);
         }
     }
 }
