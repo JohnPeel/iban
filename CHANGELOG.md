@@ -1,3 +1,13 @@
+## v0.1.7 (2023-07-04)
+
+*  bumped package version for next development cycle
+*  Add a test that we can create random ibans for all countries
+*  Fix QA to match https://www.swift.com/node/9606
+*  Fix QA to match https://www.swift.com/node/9606
+*  added CHANGELOG file
+*  added '--cfg docsrs' to docs.rs config in Cargo.toml
+
+
 ## v0.1.6 (2023-04-23)
 
 *  bumped version for dev
