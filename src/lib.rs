@@ -34,6 +34,9 @@ const IBAN_MAX_LENGTH: usize = 34;
 /// Electronic formatting can be obtained from the [`Debug`](std::fmt::Debug), [`Deref`](std::ops::Deref),
 /// or [`AsRef`](std::convert::AsRef) implementations.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "&str"))]
+#[cfg_attr(feature = "serde", serde(into = "String"))]
 pub struct Iban(ArrayString<IBAN_MAX_LENGTH>);
 
 /// Represents the Basic Bank Account Number (BBAN) portion of an International Bank Account Number (IBAN).
@@ -341,6 +344,20 @@ impl FromStr for Iban {
         }
 
         Ok(Self(iban))
+    }
+}
+
+impl TryFrom<&str> for Iban {
+    type Error = <Iban as FromStr>::Err;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        FromStr::from_str(s)
+    }
+}
+
+impl From<Iban> for String {
+    fn from(iban: Iban) -> Self {
+        iban.as_str().to_string()
     }
 }
 
