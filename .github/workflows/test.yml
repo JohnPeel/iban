@@ -65,11 +65,7 @@ jobs:
         with:
           submodules: true
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          profile: minimal
       - uses: dtolnay/rust-toolchain@nightly
-        with:
-          profile: minimal
       - uses: taiki-e/install-action@cargo-llvm-cov
       - run: cargo llvm-cov --all-features --workspace --codecov --output-path codecov.json
       - uses: codecov/codecov-action@v3
