@@ -34,6 +34,7 @@ const IBAN_MAX_LENGTH: usize = 34;
 /// Electronic formatting can be obtained from the [`Debug`](std::fmt::Debug), [`Deref`](std::ops::Deref),
 /// or [`AsRef`](std::convert::AsRef) implementations.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Iban(ArrayString<IBAN_MAX_LENGTH>);
 
 /// Represents the Basic Bank Account Number (BBAN) portion of an International Bank Account Number (IBAN).
@@ -635,6 +636,18 @@ mod tests {
 
         let iban = Iban::parse("AE070331234567890123456").unwrap();
         assert_eq!(iban.to_string().as_str(), "AE07 0331 2345 6789 0123 456");
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn iban_serde() {
+        let iban = Iban::parse("AD1200012030200359100100").unwrap();
+        let json = serde_json::to_string(&iban).unwrap();
+
+        assert_eq!(json, r#""AD1200012030200359100100""#);
+
+        let new_iban: Iban = serde_json::from_str(&json).unwrap();
+        assert_eq!(iban, new_iban);
     }
 
     #[test]
