@@ -12,7 +12,7 @@ rust-version = "1.60.0"
 default = ["std"]
 std = []
 rand = ["dep:rand"]
-serde = ["dep:serde", "arrayvec/serde"]
+serde = ["dep:serde"]
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]

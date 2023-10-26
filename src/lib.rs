@@ -34,7 +34,6 @@ const IBAN_MAX_LENGTH: usize = 34;
 /// Electronic formatting can be obtained from the [`Debug`](std::fmt::Debug), [`Deref`](std::ops::Deref),
 /// or [`AsRef`](std::convert::AsRef) implementations.
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Iban(ArrayString<IBAN_MAX_LENGTH>);
 
 /// Represents the Basic Bank Account Number (BBAN) portion of an International Bank Account Number (IBAN).
@@ -585,6 +584,46 @@ pub fn calculate_checksum(iban: &[u8]) -> u32 {
         % 97
 }
 
+#[cfg(feature = "serde")]
+const _: () = {
+    impl serde::Serialize for Iban {
+        #[inline]
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.collect_str(self)
+        }
+    }
+
+    impl<'de> serde::Deserialize<'de> for Iban {
+        #[inline]
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            struct IbanVisitor;
+
+            impl<'de> serde::de::Visitor<'de> for IbanVisitor {
+                type Value = Iban;
+
+                fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    formatter.write_str("an IBAN string")
+                }
+
+                fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    Iban::parse(value).map_err(serde::de::Error::custom)
+                }
+            }
+
+            deserializer.deserialize_str(IbanVisitor)
+        }
+    }
+};
+
 #[cfg(test)]
 mod tests {
     use core::{convert, fmt, ops};
@@ -644,10 +683,13 @@ mod tests {
         let iban = Iban::parse("AD1200012030200359100100").unwrap();
         let json = serde_json::to_string(&iban).unwrap();
 
-        assert_eq!(json, r#""AD1200012030200359100100""#);
+        assert_eq!(json, r#""AD12 0001 2030 2003 5910 0100""#);
 
         let new_iban: Iban = serde_json::from_str(&json).unwrap();
         assert_eq!(iban, new_iban);
+
+        let err = serde_json::from_value::<Iban>(serde_json::Value::Null).unwrap_err();
+        assert!(err.to_string().contains("expected an IBAN string"));
     }
 
     #[test]
