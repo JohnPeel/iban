@@ -82,5 +82,5 @@ jobs:
         with:
           toolchain: ${{ matrix.msrv }}
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo +nightly update -Zdirect-minimal-versions
+      - run: cargo +nightly update -Zminimal-versions
       - run: cargo +${{ matrix.msrv }} check --locked --all-features
