@@ -319,6 +319,7 @@ impl FromStr for Iban {
                 return Err(ParseError::InvalidCharacter);
             }
 
+            // Validation must have at least as many characters as input.
             let character_type = validation.next().ok_or(ParseError::InvalidLength)?;
             if !character_type.contains(ch) {
                 return Err(ParseError::InvalidBban);
@@ -328,13 +329,14 @@ impl FromStr for Iban {
                 .map_err(|_| ParseError::InvalidLength)?;
         }
 
+        // Input must have at least as many characters as validation.
         if validation.next().is_some() {
             return Err(ParseError::InvalidLength);
         }
 
-        if expected_length != iban.len() {
-            return Err(ParseError::InvalidLength);
-        }
+        // Since we check validation.len() >= input.len() and input.len() >= validation.len(),
+        // we know that they are equal and this should be impossible.
+        debug_assert_eq!(expected_length, iban.len());
 
         if calculate_checksum(iban.as_bytes()) != 1 {
             return Err(ParseError::WrongChecksum);
@@ -630,7 +632,7 @@ mod tests {
 
     use test_case::test_case;
 
-    use crate::{digits, Iban, ParseError};
+    use crate::{digits, CharacterType, Iban, ParseError};
 
     fn is_clone<T: Clone>(value: &T) {
         let _value = value.clone();
@@ -837,12 +839,12 @@ mod tests {
 
     #[test_case("1T4120041010050500013M02606", ParseError::CountryCode; "country code")]
     #[test_case("YTa120041010050500013M02606", ParseError::CheckDigit; "check digit")]
+    #[test_case("ZZ18SSCB11010000000000001497USD", ParseError::UnknownCountry; "unknown country")]
     #[test_case("YT412*041010050500013M02606", ParseError::InvalidCharacter; "invalid character")]
     #[test_case("SC18SSCB11010000000000001497USDABCD", ParseError::InvalidLength; "too long")]
-    #[test_case("ZZ18SSCB11010000000000001497USD", ParseError::UnknownCountry; "unknown country")]
-    #[test_case("AA110011123Z567891238", ParseError::InvalidLength; "invalid length")]
-    #[test_case("YT4120041010050500013M02606", ParseError::WrongChecksum; "wrong checksum")]
     #[test_case("YT3120041010050500013M0260a", ParseError::InvalidBban; "invalid bban")]
+    #[test_case("AA110011123Z567", ParseError::InvalidLength; "too short")]
+    #[test_case("YT4120041010050500013M02606", ParseError::WrongChecksum; "wrong checksum")]
     fn parse_error(iban: &str, expected_err: ParseError) {
         assert_eq!(Iban::parse(iban), Err(expected_err));
 
@@ -898,6 +900,9 @@ mod tests {
         assert_eq!(bban.bank_identifier(), Some("KIBV"));
         assert_eq!(bban.branch_identifier(), Some("706347"));
         assert_eq!(bban.checksum(), None);
+
+        assert_eq!(Iban::rand("Z1", &mut rng), Err(ParseError::CountryCode));
+        assert_eq!(Iban::rand("ZZ", &mut rng), Err(ParseError::UnknownCountry));
     }
 
     #[cfg(feature = "rand")]
@@ -911,5 +916,29 @@ mod tests {
         for country in crate::COUNTRIES.keys() {
             let _ = Iban::rand(country, &mut rng);
         }
+    }
+
+    #[test]
+    fn character_types() {
+        assert!(!CharacterType::N.contains(b'A'));
+        assert!(CharacterType::N.contains(b'1'));
+        assert!(!CharacterType::A.contains(b'a'));
+        assert!(CharacterType::A.contains(b'A'));
+        assert!(CharacterType::C.contains(b'A'));
+        assert!(CharacterType::C.contains(b'1'));
+        assert!(CharacterType::C.contains(b'a'));
+        assert!(CharacterType::I.contains(b'A'));
+        assert!(CharacterType::I.contains(b'1'));
+        assert!(!CharacterType::I.contains(b'a'));
+        assert!(CharacterType::S(b'A').contains(b'A'));
+        assert!(!CharacterType::S(b'A').contains(b'1'));
+
+        #[cfg(feature = "rand")]
+        assert_eq!(CharacterType::S(b'A').rand(&mut rand::thread_rng()), b'A');
+
+        is_clone(&CharacterType::N);
+        is_copy(CharacterType::N);
+        is_debug(&CharacterType::N);
+        assert_eq!(CharacterType::N, CharacterType::N);
     }
 }
