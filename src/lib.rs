@@ -12,6 +12,9 @@ use util::{digits, ChunksExt as _, IteratorExt as _};
 
 include!(concat!(env!("OUT_DIR"), "/countries.rs"));
 
+#[cfg(feature = "scanner")]
+include!(concat!(env!("OUT_DIR"), "/regex.rs"));
+
 const IBAN_MAX_LENGTH: usize = 34;
 
 /// Represents an IBAN.
@@ -626,13 +629,37 @@ const _: () = {
     }
 };
 
+#[cfg(feature = "scanner")]
+use regex::Regex;
+
+#[cfg(feature = "scanner")]
+/// Scanner to find IBANs in `&str`
+pub struct Scanner(Regex);
+
+#[cfg(feature = "scanner")]
+impl Scanner {
+    /// Creates a new `Scanner` and compiles the regular expressions
+    pub fn new() -> Self {
+        let regex = Regex::new(&REGEXES.join("|")).unwrap();
+        Scanner(regex)
+    }
+
+    /// Iterates over found IBANs
+    pub fn scan<'a, 'b>(&'a self, haystack: &'b str) -> impl Iterator<Item = &'b str> + 'b
+    where
+        'a: 'b,
+    {
+        self.0.find_iter(haystack).map(|m| m.as_str())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use core::{convert, fmt, ops};
 
     use test_case::test_case;
 
-    use crate::{digits, CharacterType, Iban, ParseError};
+    use crate::{digits, CharacterType, Iban, ParseError, Scanner};
 
     fn is_clone<T: Clone>(value: &T) {
         let _value = value.clone();
@@ -940,5 +967,27 @@ mod tests {
         is_copy(CharacterType::N);
         is_debug(&CharacterType::N);
         assert_eq!(CharacterType::N, CharacterType::N);
+    }
+
+    #[cfg(feature = "scanner")]
+    #[test]
+    fn regex() {
+        let haystack = r#" 
+        not everything is a IBAN, however AA110011123Z5678 is.
+        this one might be too long AA110011123Z56781111 or to short
+        AA110011123Z. Some people would write it as AA11 0011 123Z 5678. 
+        It is known, that blocks sometimes are written together like AA 11 0011123Z5678"#;
+
+        let scanner = Scanner::new();
+        let mut iter = scanner.scan(&haystack);
+
+        // exact match is fine
+        assert_eq!(iter.next(), Some("AA110011123Z5678"));
+        // too long is fine
+        assert_eq!(iter.next(), Some("AA110011123Z5678"));
+        // skipping too short and reading blocks of 4
+        assert_eq!(iter.next(), Some("AA11 0011 123Z 5678"));
+        // semantic blocks are also fine
+        assert_eq!(iter.next(), Some("AA 11 0011123Z5678"));
     }
 }
