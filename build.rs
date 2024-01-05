@@ -140,7 +140,6 @@ fn main() {
     )
     .expect("failed to write countries file");
 
-    // let regexes = records.map(|a| a );
     regex();
 }
 
