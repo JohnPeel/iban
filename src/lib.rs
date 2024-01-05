@@ -659,7 +659,7 @@ mod tests {
 
     use test_case::test_case;
 
-    use crate::{digits, CharacterType, Iban, ParseError, Scanner};
+    use crate::{digits, CharacterType, Iban, ParseError};
 
     fn is_clone<T: Clone>(value: &T) {
         let _value = value.clone();
@@ -972,6 +972,8 @@ mod tests {
     #[cfg(feature = "scanner")]
     #[test]
     fn regex() {
+        use crate::Scanner;
+        
         let haystack = r#" 
         not everything is a IBAN, however AA110011123Z5678 is.
         this one might be too long AA110011123Z56781111 or to short

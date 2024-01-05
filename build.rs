@@ -168,7 +168,7 @@ fn swift_to_regex(v: &str, len: usize) -> String {
     }
 }
 
-const REGEX_SPACE: &str = r#"\s?"#;
+const REGEX_SPACE: &str = r#" "#;
 
 fn regex() {
     let mut reader = csv::ReaderBuilder::new()
