@@ -431,37 +431,33 @@ impl Iban {
             return Err(ParseError::UnknownCountry);
         }
 
+        let &(expected_length, validation, ..) =
+            COUNTRIES.get(&iban[..]).ok_or(ParseError::UnknownCountry)?;
+
         iban.push_str("00");
 
-        let &(expected_length, validation, ..) = COUNTRIES
-            .get(&iban[..2])
-            .ok_or(ParseError::UnknownCountry)?;
-
-        let bban_chars = validation
+        validation
             .iter()
             .flat_map(|(count, character_type)| (0..*count).map(move |_| character_type))
             .skip(4)
-            .map(|character_type| char::from(character_type.rand(rng)));
-
-        for character in bban_chars {
-            iban.try_push(character)
-                .map_err(|_| ParseError::InvalidLength)?;
-        }
-
-        debug_assert_eq!(iban.len(), expected_length);
+            .try_for_each(|character_type| {
+                iban.try_push(char::from(character_type.rand(rng)))
+                    .map_err(|_| ParseError::InvalidLength)
+            })?;
 
         let check_digits = 98 - calculate_checksum(iban.as_bytes());
-        #[allow(clippy::cast_possible_truncation)]
-        let check_digits = [
-            b'0' + (check_digits / 10) as u8,
-            b'0' + (check_digits % 10) as u8,
-        ];
+        debug_assert_eq!(iban.len(), expected_length);
 
-        // TODO: Figure out a way to swap out the characters without unsafe.
-        // SAFETY: All of the characters generated are ASCII, so there are no issues with character boundries.
-        unsafe { &mut iban.as_bytes_mut()[2..4] }.copy_from_slice(&check_digits);
+        let mut res_iban = ArrayString::<IBAN_MAX_LENGTH>::new();
+        iban.char_indices().for_each(|(ind, ch)| {
+            res_iban.push(match ind {
+                2 => char::from(b'0' + (check_digits / 10) as u8),
+                3 => char::from(b'0' + (check_digits % 10) as u8),
+                _ => ch,
+            })
+        });
 
-        Ok(Self(iban))
+        Ok(Self(res_iban))
     }
 }
 
