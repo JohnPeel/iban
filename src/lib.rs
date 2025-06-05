@@ -118,10 +118,10 @@ impl CharacterType {
     #[cfg(feature = "rand")]
     pub fn rand<R: ?Sized + rand::Rng>(self, rng: &mut R) -> u8 {
         match self {
-            CharacterType::N => rng.gen_range(b'0'..=b'9'),
-            CharacterType::A => rng.gen_range(b'A'..=b'Z'),
+            CharacterType::N => rng.random_range(b'0'..=b'9'),
+            CharacterType::A => rng.random_range(b'A'..=b'Z'),
             CharacterType::C => {
-                let r = rng.gen_range(0..62);
+                let r = rng.random_range(0..62);
 
                 if r < 10 {
                     b'0' + r
@@ -132,7 +132,7 @@ impl CharacterType {
                 }
             }
             CharacterType::I => {
-                let r = rng.gen_range(0..36);
+                let r = rng.random_range(0..36);
 
                 if r < 10 {
                     b'0' + r
@@ -934,7 +934,7 @@ mod tests {
         assert!(!CharacterType::S(b'A').contains(b'1'));
 
         #[cfg(feature = "rand")]
-        assert_eq!(CharacterType::S(b'A').rand(&mut rand::thread_rng()), b'A');
+        assert_eq!(CharacterType::S(b'A').rand(&mut rand::rng()), b'A');
 
         is_clone(&CharacterType::N);
         is_copy(CharacterType::N);

@@ -21,8 +21,10 @@ all-features = true
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
 phf = { version = "0.11", default-features = false }
-rand = { version = "0.8", default-features = false, optional = true }
-serde = { version = "1.0.7", default-features = false, features = ["derive"], optional = true }
+rand = { version = "0.9", default-features = false, optional = true }
+serde = { version = "1.0.7", default-features = false, features = [
+    "derive",
+], optional = true }
 
 [build-dependencies]
 csv = "1"
@@ -38,7 +40,7 @@ serde_derive = "1.0.7"
 [dev-dependencies]
 serde_json = "1"
 test-case = "3"
-rand = "0.8"
+rand = "0.9"
 
 # NOTE: test-case-core has an invalid minimal version for syn.
 syn = { version = ">=1.0.91", default-features = false }
