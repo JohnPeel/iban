@@ -115,8 +115,8 @@ impl CharacterType {
     }
 
     /// Returns a random member of the character type `self`.
-    #[cfg(feature = "rand")]
-    pub fn rand<R: ?Sized + rand::Rng>(self, rng: &mut R) -> u8 {
+    #[cfg(feature = "rand_0_8")]
+    pub fn rand_0_8<R: ?Sized + rand_0_8::Rng>(self, rng: &mut R) -> u8 {
         match self {
             CharacterType::N => rng.gen_range(b'0'..=b'9'),
             CharacterType::A => rng.gen_range(b'A'..=b'Z'),
@@ -133,6 +133,36 @@ impl CharacterType {
             }
             CharacterType::I => {
                 let r = rng.gen_range(0..36);
+
+                if r < 10 {
+                    b'0' + r
+                } else {
+                    b'A' + r - 10
+                }
+            }
+            CharacterType::S(expected) => expected,
+        }
+    }
+
+    /// Returns a random member of the character type `self`.
+    #[cfg(feature = "rand_0_9")]
+    pub fn rand_0_9<R: ?Sized + rand_0_9::Rng>(self, rng: &mut R) -> u8 {
+        match self {
+            CharacterType::N => rng.random_range(b'0'..=b'9'),
+            CharacterType::A => rng.random_range(b'A'..=b'Z'),
+            CharacterType::C => {
+                let r = rng.random_range(0..62);
+
+                if r < 10 {
+                    b'0' + r
+                } else if r < 36 {
+                    b'A' + r - 10
+                } else {
+                    b'a' + r - 36
+                }
+            }
+            CharacterType::I => {
+                let r = rng.random_range(0..36);
 
                 if r < 10 {
                     b'0' + r
@@ -411,8 +441,8 @@ impl Iban {
     ///
     /// # Errors
     /// Returns a `ParseError` if the specified `country_code` is invalid or unknown.
-    #[cfg(feature = "rand")]
-    pub fn rand<R: ?Sized + rand::Rng>(
+    #[cfg(feature = "rand_0_8")]
+    pub fn rand_0_8<R: ?Sized + rand_0_8::Rng>(
         country_code: &str,
         rng: &mut R,
     ) -> Result<Self, ParseError> {
@@ -441,7 +471,7 @@ impl Iban {
             .iter()
             .flat_map(|(count, character_type)| (0..*count).map(move |_| character_type))
             .skip(4)
-            .map(|character_type| char::from(character_type.rand(rng)));
+            .map(|character_type| char::from(character_type.rand_0_8(rng)));
 
         for character in bban_chars {
             iban.try_push(character)
@@ -462,6 +492,82 @@ impl Iban {
         unsafe { &mut iban.as_bytes_mut()[2..4] }.copy_from_slice(&check_digits);
 
         Ok(Self(iban))
+    }
+
+    /// Generates a random IBAN for the specified `country_code` using the given `rng`.
+    ///
+    /// # Returns
+    /// If successful, returns an `Iban` instance representing the generated IBAN.
+    ///
+    /// # Errors
+    /// Returns a `ParseError` if the specified `country_code` is invalid or unknown.
+    #[cfg(feature = "rand_0_9")]
+    pub fn rand_0_9<R: ?Sized + rand_0_9::Rng>(
+        country_code: &str,
+        rng: &mut R,
+    ) -> Result<Self, ParseError> {
+        let mut iban = ArrayString::<IBAN_MAX_LENGTH>::new();
+        let mut country_code = country_code.as_bytes().iter().map(u8::to_ascii_uppercase);
+
+        for _ in 0..2 {
+            let ch = country_code
+                .next()
+                .filter(u8::is_ascii_uppercase)
+                .ok_or(ParseError::CountryCode)?;
+            iban.push(char::from(ch));
+        }
+
+        if country_code.next().is_some() || iban.len() != 2 {
+            return Err(ParseError::UnknownCountry);
+        }
+
+        iban.push_str("00");
+
+        let &(expected_length, validation, ..) = COUNTRIES
+            .get(&iban[..2])
+            .ok_or(ParseError::UnknownCountry)?;
+
+        let bban_chars = validation
+            .iter()
+            .flat_map(|(count, character_type)| (0..*count).map(move |_| character_type))
+            .skip(4)
+            .map(|character_type| char::from(character_type.rand_0_9(rng)));
+
+        for character in bban_chars {
+            iban.try_push(character)
+                .map_err(|_| ParseError::InvalidLength)?;
+        }
+
+        debug_assert_eq!(iban.len(), expected_length);
+
+        let check_digits = 98 - calculate_checksum(iban.as_bytes());
+        #[allow(clippy::cast_possible_truncation)]
+        let check_digits = [
+            b'0' + (check_digits / 10) as u8,
+            b'0' + (check_digits % 10) as u8,
+        ];
+
+        // TODO: Figure out a way to swap out the characters without unsafe.
+        // SAFETY: All of the characters generated are ASCII, so there are no issues with character boundries.
+        unsafe { &mut iban.as_bytes_mut()[2..4] }.copy_from_slice(&check_digits);
+
+        Ok(Self(iban))
+    }
+
+    /// Generates a random IBAN for the specified `country_code` using the given `rng`.
+    ///
+    /// # Returns
+    /// If successful, returns an `Iban` instance representing the generated IBAN.
+    ///
+    /// # Errors
+    /// Returns a `ParseError` if the specified `country_code` is invalid or unknown.
+    #[cfg(feature = "rand_0_8")]
+    #[deprecated = "use Self::rand_0_8"]
+    pub fn rand<R: ?Sized + rand_0_8::Rng>(
+        country_code: &str,
+        rng: &mut R,
+    ) -> Result<Self, ParseError> {
+        Self::rand_0_8(country_code, rng)
     }
 }
 
@@ -883,13 +989,13 @@ mod tests {
         is_asref_str(&bban);
     }
 
-    #[cfg(feature = "rand")]
+    #[cfg(feature = "rand_0_8")]
     #[test]
-    fn random_iban() {
-        use rand::SeedableRng;
+    fn random_iban_using_rand_0_8() {
+        use rand_0_8::SeedableRng;
 
-        let mut rng = rand::rngs::StdRng::from_seed([0; 32]);
-        let iban = Iban::rand("GB", &mut rng).expect("generates random (seeded) iban");
+        let mut rng = rand_0_8::rngs::StdRng::from_seed([0; 32]);
+        let iban = Iban::rand_0_8("GB", &mut rng).expect("generates random (seeded) iban");
 
         assert_eq!(&*iban, "GB82KIBV70634724101729");
 
@@ -901,20 +1007,61 @@ mod tests {
         assert_eq!(bban.branch_identifier(), Some("706347"));
         assert_eq!(bban.checksum(), None);
 
-        assert_eq!(Iban::rand("Z1", &mut rng), Err(ParseError::CountryCode));
-        assert_eq!(Iban::rand("ZZ", &mut rng), Err(ParseError::UnknownCountry));
+        assert_eq!(Iban::rand_0_8("Z1", &mut rng), Err(ParseError::CountryCode));
+        assert_eq!(
+            Iban::rand_0_8("ZZ", &mut rng),
+            Err(ParseError::UnknownCountry)
+        );
     }
 
-    #[cfg(feature = "rand")]
+    #[cfg(feature = "rand_0_9")]
     #[test]
-    fn random_all_countries() {
-        use rand::SeedableRng;
-        let mut rng = rand::rngs::StdRng::from_seed([0; 32]);
+    fn random_iban_using_rand_0_9() {
+        use rand_0_9::SeedableRng;
+
+        let mut rng = rand_0_9::rngs::StdRng::from_seed([0; 32]);
+        let iban = Iban::rand_0_9("GB", &mut rng).expect("generates random (seeded) iban");
+
+        assert_eq!(&*iban, "GB82KIBV70634724101729");
+
+        assert_eq!(iban.country_code(), "GB");
+        assert_eq!(iban.check_digits(), "82");
+
+        let bban = iban.bban();
+        assert_eq!(bban.bank_identifier(), Some("KIBV"));
+        assert_eq!(bban.branch_identifier(), Some("706347"));
+        assert_eq!(bban.checksum(), None);
+
+        assert_eq!(Iban::rand_0_9("Z1", &mut rng), Err(ParseError::CountryCode));
+        assert_eq!(
+            Iban::rand_0_9("ZZ", &mut rng),
+            Err(ParseError::UnknownCountry)
+        );
+    }
+
+    #[cfg(feature = "rand_0_8")]
+    #[test]
+    fn random_all_countries_using_rand_0_8() {
+        use rand_0_8::SeedableRng;
+        let mut rng = rand_0_8::rngs::StdRng::from_seed([0; 32]);
 
         // Test that we can construct a random iban for every country
         // we support.
         for country in crate::COUNTRIES.keys() {
-            let _ = Iban::rand(country, &mut rng);
+            let _ = Iban::rand_0_8(country, &mut rng);
+        }
+    }
+
+    #[cfg(feature = "rand_0_9")]
+    #[test]
+    fn random_all_countries_using_rand_0_9() {
+        use rand_0_9::SeedableRng;
+        let mut rng = rand_0_9::rngs::StdRng::from_seed([0; 32]);
+
+        // Test that we can construct a random iban for every country
+        // we support.
+        for country in crate::COUNTRIES.keys() {
+            let _ = Iban::rand_0_9(country, &mut rng);
         }
     }
 
@@ -933,8 +1080,14 @@ mod tests {
         assert!(CharacterType::S(b'A').contains(b'A'));
         assert!(!CharacterType::S(b'A').contains(b'1'));
 
-        #[cfg(feature = "rand")]
-        assert_eq!(CharacterType::S(b'A').rand(&mut rand::thread_rng()), b'A');
+        #[cfg(feature = "rand_0_8")]
+        assert_eq!(
+            CharacterType::S(b'A').rand_0_8(&mut rand_0_8::thread_rng()),
+            b'A'
+        );
+
+        #[cfg(feature = "rand_0_9")]
+        assert_eq!(CharacterType::S(b'A').rand_0_9(&mut rand_0_9::rng()), b'A');
 
         is_clone(&CharacterType::N);
         is_copy(CharacterType::N);
