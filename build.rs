@@ -38,6 +38,11 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=registry.txt");
 
+    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_RAND");
+    if env::var("CARGO_FEATURE_RAND").is_ok() {
+        println!("cargo:warning=The `rand` feature flag has been deprecated. Use `rand_0_8` or `rand_0_9`.");
+    }
+
     let mut reader = csv::ReaderBuilder::new()
         .delimiter(b'|')
         .has_headers(true)
@@ -78,8 +83,7 @@ fn main() {
                         )
                     })
                     .map(|(len, char)| quote! { (#len, CharacterType::#char) });
-                let captures = iban_format_swift[..2]
-                    .as_bytes()
+                let captures = iban_format_swift.as_bytes()[..2]
                     .iter()
                     .map(|byte| (1usize, byte.to_ascii_uppercase()))
                     .map(|(len, char)| quote! { (#len, CharacterType::S(#char)) })

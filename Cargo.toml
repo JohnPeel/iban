@@ -4,14 +4,16 @@ description = "IBAN parsing library"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/JohnPeel/iban"
 documentation = "https://docs.rs/iban"
-version = "0.1.8"
+version = "0.2.0"
 edition = "2021"
-rust-version = "1.60.0"
+rust-version = "1.63.0"
 
 [features]
 default = ["std"]
 std = []
-rand = ["dep:rand"]
+rand_0_8 = ["dep:rand_0_8"]
+rand_0_9 = ["dep:rand_0_9"]
+rand = ["rand_0_8"]
 serde = ["dep:serde"]
 
 [package.metadata.docs.rs]
@@ -19,16 +21,17 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-arrayvec = { version = "0.7", default-features = false }
-phf = { version = "0.11", default-features = false }
-rand = { version = "0.8", default-features = false, optional = true }
+arrayvec = { version = "0.7.0", default-features = false }
+phf = { version = "0.11.0", default-features = false }
+rand_0_8 = { package = "rand", version = "0.8.0", default-features = false, optional = true }
+rand_0_9 = { package = "rand", version = "0.9.0", default-features = false, optional = true }
 serde = { version = "1.0.7", default-features = false, features = ["derive"], optional = true }
 
 [build-dependencies]
-csv = "1"
-phf_codegen = "0.11"
-quote = "1"
-regex = "1"
+csv = "1.0.0"
+phf_codegen = "0.11.0"
+quote = "1.0.35"
+regex = "1.0.0"
 
 serde = { version = "1.0.7", features = ["derive"] }
 
@@ -36,9 +39,10 @@ serde = { version = "1.0.7", features = ["derive"] }
 serde_derive = "1.0.7"
 
 [dev-dependencies]
-serde_json = "1"
-test-case = "3"
-rand = "0.8"
+serde_json = "1.0.0"
+test-case = "3.0.0"
+rand_0_8 = { package = "rand", version = "0.8.0" }
+rand_0_9 = { package = "rand", version = "0.9.0" }
 
 # NOTE: test-case-core has an invalid minimal version for syn.
 syn = { version = ">=1.0.91", default-features = false }
