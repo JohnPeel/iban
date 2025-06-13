@@ -487,9 +487,8 @@ impl Iban {
             b'0' + (check_digits % 10) as u8,
         ];
 
-        // TODO: Figure out a way to swap out the characters without unsafe.
-        // SAFETY: All of the characters generated are ASCII, so there are no issues with character boundries.
-        unsafe { &mut iban.as_bytes_mut()[2..4] }.copy_from_slice(&check_digits);
+        iban[2] = check_digits[0];
+        iban[3] = check_digits[1];
 
         Ok(Self(iban))
     }
