@@ -8,6 +8,8 @@ use core::{fmt, ops::Deref, str::FromStr};
 use arrayvec::ArrayString;
 
 mod util;
+#[cfg(feature = "rand")]
+use util::StrExt as _;
 use util::{digits, ChunksExt as _, IteratorExt as _};
 
 include!(concat!(env!("OUT_DIR"), "/countries.rs"));
@@ -481,15 +483,13 @@ impl Iban {
         debug_assert_eq!(iban.len(), expected_length);
 
         let check_digits = 98 - calculate_checksum(iban.as_bytes());
-        #[allow(clippy::cast_possible_truncation)]
         let check_digits = [
             b'0' + (check_digits / 10) as u8,
             b'0' + (check_digits % 10) as u8,
         ];
-
-        // TODO: Figure out a way to swap out the characters without unsafe.
-        // SAFETY: All of the characters generated are ASCII, so there are no issues with character boundries.
-        unsafe { &mut iban.as_bytes_mut()[2..4] }.copy_from_slice(&check_digits);
+        let check_digits = core::str::from_utf8(&check_digits)
+            .expect("check digits are ASCII, and by definition valid UTF-8");
+        iban[2..4].copy_from_str(check_digits);
 
         Ok(Self(iban))
     }

@@ -106,3 +106,24 @@ pub fn digits(mut value: u8) -> impl Iterator<Item = u8> {
         // Ensure at least one value (0) is provided by this iterator.
         .ensure_one(0)
 }
+
+#[cfg(feature = "rand")]
+pub trait StrExt {
+    /// Copies the contents of `src` into `self`, using a memcpy.
+    ///
+    /// The length of `src` must be the same as `self`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two str have different lengths.
+    fn copy_from_str(&mut self, src: &str);
+}
+
+#[cfg(feature = "rand")]
+impl StrExt for str {
+    #[inline]
+    fn copy_from_str(&mut self, src: &str) {
+        // SAFETY: The entire slice is being overwritten by `src`, which is a valid `str` reference, and as such is valid UTF-8.
+        unsafe { self.as_bytes_mut() }.copy_from_slice(src.as_bytes());
+    }
+}
