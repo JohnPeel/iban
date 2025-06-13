@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf};
+use std::{cmp::min, env, path::PathBuf};
 
 use quote::{format_ident, quote};
 use regex::Regex;
@@ -143,4 +143,131 @@ fn main() {
         ),
     )
     .expect("failed to write countries file");
+
+    regex();
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct RegexRecord {
+    country_code: String,
+    iban_format_regex: String,
+    iban_format_swift: String,
+}
+
+fn swift_to_regex(v: &str, len: usize) -> String {
+    match v {
+        "N" => {
+            format!("[0-9]{{{}}}", len)
+        }
+        "I" => {
+            format!("[A-Z0-9]{{{}}}", len)
+        }
+        "C" => {
+            format!("[A-Z0-9]{{{}}}", len)
+        }
+        "A" => {
+            format!("[A-Z]{{{}}}", len)
+        }
+        _ => "".to_string(),
+    }
+}
+
+const REGEX_SPACE: &str = r#" "#;
+
+fn regex() {
+    let mut reader = csv::ReaderBuilder::new()
+        .delimiter(b'|')
+        .has_headers(true)
+        .from_path("./registry.txt")
+        .expect("failed to create csv reader for registry.txt");
+
+    let pattern = Regex::new(r"(\d+)!(a|n|c|i)").expect("regex should be valid");
+
+    let countries = reader
+        .deserialize()
+        .map(|record| record.expect("valid record"))
+        .flat_map(
+            |RegexRecord {
+                 country_code,
+                 iban_format_regex,
+                 iban_format_swift,
+             }| {
+                let captures = pattern
+                    .captures_iter(&iban_format_swift[2..])
+                    .map(|captures| {
+                        (
+                            captures[1].parse::<usize>().unwrap(),
+                            format!(
+                                "{}",
+                                captures[2]
+                                    .parse::<char>()
+                                    .unwrap()
+                                    .to_ascii_uppercase()
+                                    .to_string()
+                            ),
+                        )
+                    });
+
+                let buf = captures.collect::<Vec<(usize, String)>>();
+
+                let blocks = buf.clone().into_iter().fold(
+                    String::from(format!("{}{}", &country_code, REGEX_SPACE)),
+                    |mut acc, (len, v)| {
+                        let regex = swift_to_regex(v.as_str(), len);
+
+                        acc.push_str(&regex);
+                        acc.push_str(REGEX_SPACE);
+
+                        acc
+                    },
+                );
+
+                let space = buf.clone().into_iter().fold(
+                    (String::from(country_code.clone()), 2),
+                    |(mut acc, mut len), (k, v)| {
+                        let mut section_length = k;
+                        while section_length > 0 {
+                            let remain = min(4 - len % 4, section_length);
+                            let regex = swift_to_regex(v.as_str(), remain);
+
+                            acc.push_str(&regex);
+
+                            section_length -= remain;
+                            len += remain;
+                            if len % 4 == 0 {
+                                acc.push_str(REGEX_SPACE);
+                            }
+                        }
+
+                        (acc, len)
+                    },
+                );
+
+                vec![
+                    iban_format_regex
+                        .trim_start_matches("^")
+                        .trim_end_matches("$")
+                        .to_string(),
+                    space.0.trim_end_matches(REGEX_SPACE).to_string(),
+                    blocks.trim_end_matches(REGEX_SPACE).to_string(),
+                ]
+            },
+        );
+
+    let regexes = countries.collect::<Vec<_>>();
+
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    std::fs::write(
+        out_path.join("regex.rs"),
+        format!(
+            "const REGEXES: [&'static str; {}] = [{}];\n",
+            regexes.len(),
+            regexes
+                .iter()
+                .map(|r| format!("r#\"{}\"#", r))
+                .collect::<Vec<String>>()
+                .join(",\n")
+        ),
+    )
+    .expect("failed to write regex file");
 }

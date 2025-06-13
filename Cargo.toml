@@ -15,6 +15,7 @@ rand_0_8 = ["dep:rand_0_8"]
 rand_0_9 = ["dep:rand_0_9"]
 rand = ["rand_0_8"]
 serde = ["dep:serde"]
+scanner = ["dep:regex"]
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
@@ -26,6 +27,7 @@ phf = { version = "0.11.0", default-features = false }
 rand_0_8 = { package = "rand", version = "0.8.0", default-features = false, optional = true }
 rand_0_9 = { package = "rand", version = "0.9.0", default-features = false, optional = true }
 serde = { version = "1.0.7", default-features = false, features = ["derive"], optional = true }
+regex = { version = "1", optional = true }
 
 [build-dependencies]
 csv = "1.0.0"
